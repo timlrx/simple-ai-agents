@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+        description: Trims trailing whitespace.
+
+  # formatter
+  - repo: https://github.com/psf/black
+    rev: 23.9.0
+    hooks:
+      - id: black
+
+  # sorts imports
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: isort (python)
+        # https://pycqa.github.io/isort/docs/configuration/black_compatibility.html
+        args: ["--profile", "black", "--filter-files"]
+
+  # linter
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        # https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html#flake8
+        args: [--max-line-length=100, --extend-ignore=E203]
