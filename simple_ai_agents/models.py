@@ -50,7 +50,7 @@ class ChatMessage(BaseModel):
     total_length: Optional[int] = None
 
     def __str__(self) -> str:
-        return str(self.json(exclude_none=True))
+        return str(self.model_dump_json(exclude_none=True))
 
 
 class ChatSession(BaseModel):

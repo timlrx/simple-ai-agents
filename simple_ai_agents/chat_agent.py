@@ -198,7 +198,7 @@ class ChatAgent(BaseModel):
 
     def __str__(self) -> str | None:
         if self.default_session:
-            return self.default_session.json(exclude_none=True, indent=2)
+            return self.default_session.model_dump_json(exclude_none=True, indent=2)
 
     def __repr__(self) -> str:
         return ""

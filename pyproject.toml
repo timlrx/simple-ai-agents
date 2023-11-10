@@ -12,7 +12,6 @@ python-dotenv = "^1.0.0"
 pydantic = "^2.0.0"
 openai = "^0.28.1"
 orjson = "^3.9.7"
-huggingface-hub = "^0.17.3"
 litellm = "^0.13.2"
 
 [tool.poetry.group.dev.dependencies]
