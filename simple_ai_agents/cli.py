@@ -1,6 +1,4 @@
-import argparse
-
-import fire
+import click
 from dotenv import load_dotenv
 
 from simple_ai_agents.chat_agent import ChatAgent
@@ -8,21 +6,18 @@ from simple_ai_agents.prompts import SYSTEM_PROMPT
 
 load_dotenv()
 
-parser = argparse.ArgumentParser()
-parser.add_argument("character", help="Specify the character", default=None, nargs="?")
-parser.add_argument("--prime", action="store_true", help="Enable priming")
 
-ARGS = parser.parse_args()
-
-
-def interactive_chat():
+@click.command()
+@click.option("--character", default=None, help="Specify the character")
+@click.option("--prime/--no-prime", default=False, help="Enable priming")
+def interactive_chat(character, prime):
     ChatAgent(
-        character=ARGS.character,
-        prime=ARGS.prime,
+        character=character,
+        prime=prime,
         console=True,
         system=SYSTEM_PROMPT,
     )
 
 
 if __name__ == "__main__":
-    fire.Fire(interactive_chat)
+    interactive_chat()

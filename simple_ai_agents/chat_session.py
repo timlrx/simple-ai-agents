@@ -60,11 +60,11 @@ class ChatLLMSession(ChatSession):
         )
         response = completion(model=model, messages=history, **other_options)  # type: ignore
         try:
-            content = response.choices[0].message.content
+            content = response.choices[0]["message"]["content"]
             assistant_message = ChatMessage(
                 role="assistant",
                 content=content,
-                finish_reason=response.choices[0].message.content,
+                finish_reason=response.choices[0]["message"]["content"],
                 prompt_length=response["usage"]["prompt_tokens"],
                 completion_length=response["usage"]["completion_tokens"],
                 total_length=response["usage"]["total_tokens"],
@@ -93,11 +93,11 @@ class ChatLLMSession(ChatSession):
             model=model, messages=history, **other_options
         )  # type: ignore
         try:
-            content = response.choices[0].message.content
+            content = response.choices[0]["message"]["content"]
             assistant_message = ChatMessage(
                 role="assistant",
                 content=content,
-                finish_reason=response.choices[0].message.content,
+                finish_reason=response.choices[0]["message"]["content"],
                 prompt_length=response["usage"]["prompt_tokens"],
                 completion_length=response["usage"]["completion_tokens"],
                 total_length=response["usage"]["total_tokens"],
@@ -128,7 +128,7 @@ class ChatLLMSession(ChatSession):
         )
         content = []
         for chunk in response:
-            delta = chunk["choices"][0]["delta"].get("content")
+            delta = chunk["choices"][0]["delta"].get("content")  # type: ignore
             if delta:
                 content.append(delta)
                 yield {"delta": delta, "response": "".join(content)}

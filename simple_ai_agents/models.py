@@ -2,14 +2,8 @@ import datetime
 from typing import Any, Dict, List, Optional, Set, Union
 from uuid import UUID, uuid4
 
-import orjson
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
-
-
-def orjson_dumps(v, *, default, **kwargs):
-    # orjson.dumps returns bytes, to match standard json.dumps we need to decode
-    return orjson.dumps(v, default=default, **kwargs).decode()
 
 
 def now_tz():

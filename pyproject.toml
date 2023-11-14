@@ -7,12 +7,11 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
-fire = "^0.5.0"
 python-dotenv = "^1.0.0"
-pydantic = "^2.0.0"
-openai = "^0.28.1"
-orjson = "^3.9.7"
-litellm = "^0.13.2"
+pydantic = "^2.4.0"
+openai = "^1.0.0"
+litellm = "^1.0.0"
+click = "^8.1.7"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.9.0"
