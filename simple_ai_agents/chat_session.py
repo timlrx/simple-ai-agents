@@ -1,11 +1,15 @@
-from typing import Any, Dict, Optional
+from typing import Optional, Type, TypeVar
 
 import litellm
+from instructor.patch import handle_response_model, process_response
 from litellm import ModelResponse, acompletion, completion
+from pydantic import BaseModel
 
 from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions
 
 litellm.telemetry = False
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class ChatLLMSession(ChatSession):
@@ -16,10 +20,16 @@ class ChatLLMSession(ChatSession):
         self,
         prompt: str,
         system: Optional[str] = None,
+        response_model: Optional[Type[BaseModel]] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        # If save_messages exist, append it to prompt
-        if self.messages:
+        # Just use user prompt, no system prompt required
+        if response_model:
+            history = [
+                {"role": "user", "content": prompt},
+            ]
+        # If saved messages exist, append it to prompt
+        elif self.messages:
             history = [{"role": "system", "content": system or self.system}]
             for msg in self.messages:
                 history.append({"role": msg.role, "content": msg.content})
@@ -45,18 +55,26 @@ class ChatLLMSession(ChatSession):
         if not model:
             raise ValueError("No LLM model provided.")
         other_options = {k: v for k, v in litellm_options.items() if k != "model"}
-        return model, other_options, history, user_message
+
+        if response_model:
+            response_model, fn_kwargs = handle_response_model(
+                response_model, other_options
+            )
+            # Add functions and function_call to other_options
+            other_options.update(fn_kwargs)
+        return model, other_options, history, user_message, response_model
 
     def gen(
         self,
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
-        params: Optional[Dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        model, other_options, history, user_message = self.prepare_request(
-            prompt, system=system, llm_options=llm_options
+        model, other_options, history, user_message, _ = self.prepare_request(
+            prompt,
+            system=system,
+            llm_options=llm_options,
         )
         response = completion(model=model, messages=history, **other_options)  # type: ignore
         try:
@@ -83,10 +101,9 @@ class ChatLLMSession(ChatSession):
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
-        params: Optional[Dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        model, other_options, history, user_message = self.prepare_request(
+        model, other_options, history, user_message, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
         response: ModelResponse = await acompletion(
@@ -111,15 +128,49 @@ class ChatLLMSession(ChatSession):
 
         return content
 
+    def gen_model(
+        self,
+        prompt: str,
+        response_model: Type[T],
+        system: Optional[str] = None,
+        save_messages: Optional[bool] = None,
+        llm_options: Optional[LLMOptions] = None,
+    ) -> Type[T]:
+        if not response_model:
+            raise ValueError("No response model provided.")
+        (
+            model,
+            other_options,
+            history,
+            user_message,
+            response_model,
+        ) = self.prepare_request(
+            prompt,
+            system=system,
+            response_model=response_model,
+            llm_options=llm_options,
+        )  # type: ignore
+        response = completion(model=model, messages=history, **other_options)  # type: ignore
+        try:
+            # content = response["choices"][0]["message"]["function_call"]
+            model = process_response(response, response_model)
+            self.total_prompt_length += response["usage"]["prompt_tokens"]
+            self.total_completion_length += response["usage"]["completion_tokens"]
+            self.total_length += response["usage"]["total_tokens"]
+        except KeyError:
+            raise KeyError(f"No AI generation: {response}")
+
+        # TODO: handle empty case
+        return model  # type: ignore
+
     def stream(
         self,
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
-        params: Optional[Dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        model, other_options, history, user_message = self.prepare_request(
+        model, other_options, history, user_message, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
 
@@ -146,10 +197,9 @@ class ChatLLMSession(ChatSession):
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
-        params: Optional[Dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        model, other_options, history, user_message = self.prepare_request(
+        model, other_options, history, user_message, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
 

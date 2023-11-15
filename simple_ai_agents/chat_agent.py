@@ -124,7 +124,6 @@ class ChatAgent(BaseModel):
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
-        params: Optional[Dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> str:
         """
@@ -135,7 +134,6 @@ class ChatAgent(BaseModel):
             prompt,
             system=system,
             save_messages=save_messages,
-            params=params,
             llm_options=llm_options,
         )
 
@@ -145,7 +143,6 @@ class ChatAgent(BaseModel):
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
-        params: Optional[Dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
         """
@@ -156,7 +153,6 @@ class ChatAgent(BaseModel):
             prompt,
             system=system,
             save_messages=save_messages,
-            params=params,
             llm_options=llm_options,
         )
 
@@ -253,7 +249,6 @@ class ChatAgentAsync(ChatAgent):
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
-        params: Optional[Dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> str:
         """
@@ -264,7 +259,6 @@ class ChatAgentAsync(ChatAgent):
             prompt,
             system=system,
             save_messages=save_messages,
-            params=params,
             llm_options=llm_options,
         )
 
@@ -274,7 +268,6 @@ class ChatAgentAsync(ChatAgent):
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
-        params: Optional[Dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
         """
@@ -285,7 +278,6 @@ class ChatAgentAsync(ChatAgent):
             prompt,
             system=system,
             save_messages=save_messages,
-            params=params,
             llm_options=llm_options,
         )
 

@@ -12,6 +12,7 @@ pydantic = "^2.4.0"
 openai = "^1.0.0"
 litellm = "^1.0.0"
 click = "^8.1.7"
+instructor = "^0.3.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.9.0"
