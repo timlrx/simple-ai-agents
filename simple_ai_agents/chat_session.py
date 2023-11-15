@@ -54,15 +54,13 @@ class ChatLLMSession(ChatSession):
         model = litellm_options.get("model")
         if not model:
             raise ValueError("No LLM model provided.")
-        other_options = {k: v for k, v in litellm_options.items() if k != "model"}
+        kwargs = {k: v for k, v in litellm_options.items() if k != "model"}
 
         if response_model:
-            response_model, fn_kwargs = handle_response_model(
-                response_model, other_options
-            )
-            # Add functions and function_call to other_options
-            other_options.update(fn_kwargs)
-        return model, other_options, history, user_message, response_model
+            response_model, fn_kwargs = handle_response_model(response_model, kwargs)
+            # Add functions and function_call to kwargs
+            kwargs.update(fn_kwargs)
+        return model, kwargs, history, user_message, response_model
 
     def gen(
         self,
@@ -71,12 +69,12 @@ class ChatLLMSession(ChatSession):
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        model, other_options, history, user_message, _ = self.prepare_request(
+        model, kwargs, history, user_message, _ = self.prepare_request(
             prompt,
             system=system,
             llm_options=llm_options,
         )
-        response = completion(model=model, messages=history, **other_options)  # type: ignore
+        response = completion(model=model, messages=history, **kwargs)  # type: ignore
         try:
             content = response.choices[0]["message"]["content"]
             assistant_message = ChatMessage(
@@ -103,11 +101,11 @@ class ChatLLMSession(ChatSession):
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        model, other_options, history, user_message, _ = self.prepare_request(
+        model, kwargs, history, user_message, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
         response: ModelResponse = await acompletion(
-            model=model, messages=history, **other_options
+            model=model, messages=history, **kwargs
         )  # type: ignore
         try:
             content = response.choices[0]["message"]["content"]
@@ -140,7 +138,7 @@ class ChatLLMSession(ChatSession):
             raise ValueError("No response model provided.")
         (
             model,
-            other_options,
+            kwargs,
             history,
             user_message,
             response_model,
@@ -150,7 +148,7 @@ class ChatLLMSession(ChatSession):
             response_model=response_model,
             llm_options=llm_options,
         )  # type: ignore
-        response = completion(model=model, messages=history, **other_options)  # type: ignore
+        response = completion(model=model, messages=history, **kwargs)  # type: ignore
         try:
             # content = response["choices"][0]["message"]["function_call"]
             model = process_response(response, response_model)
@@ -170,12 +168,12 @@ class ChatLLMSession(ChatSession):
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        model, other_options, history, user_message, _ = self.prepare_request(
+        model, kwargs, history, user_message, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
 
         response = completion(
-            model=model, messages=history, stream=True, **other_options  # type: ignore
+            model=model, messages=history, stream=True, **kwargs  # type: ignore
         )
         content = []
         for chunk in response:
@@ -199,12 +197,12 @@ class ChatLLMSession(ChatSession):
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        model, other_options, history, user_message, _ = self.prepare_request(
+        model, kwargs, history, user_message, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
 
         response: ModelResponse = await acompletion(
-            model=model, messages=history, stream=True, **other_options
+            model=model, messages=history, stream=True, **kwargs
         )  # type: ignore
         content = []
         async for chunk in response:  # type: ignore
