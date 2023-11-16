@@ -1,5 +1,5 @@
 from json import JSONDecodeError
-from typing import Optional, Type, TypeVar
+from typing import Any, AsyncGenerator, Generator, Optional, Type, TypeVar
 
 import litellm
 from instructor.patch import handle_response_model, process_response
@@ -23,7 +23,29 @@ class ChatLLMSession(ChatSession):
         system: Optional[str] = None,
         response_model: Optional[Type[BaseModel]] = None,
         llm_options: Optional[LLMOptions] = None,
-    ):
+    ) -> tuple[
+        str,
+        dict[str, Any],
+        list[dict[str, Any]],
+        ChatMessage,
+        Optional[Type[BaseModel]],
+    ]:
+        """
+        Prepare a request to send to liteLLM.
+
+        Args:
+            prompt (str): User prompt
+            system (str, optional): System prompt. Defaults to None.
+            response_model (BaseModel), optional:
+                The response model to use for parsing the response.
+                Defaults to None.
+            llm_options (LLMOptions, optional): LiteLLM options.
+                See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
+                Defaults to None.
+
+        Returns:
+            Tuple: (model, kwargs, history, user_message, response_model)
+        """
         # Just use user prompt, no system prompt required
         if response_model:
             history = [
@@ -69,7 +91,19 @@ class ChatLLMSession(ChatSession):
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
-    ):
+    ) -> str:
+        """
+        Generate a chat response from the LLM.
+
+        Args:
+            prompt (str): User prompt
+            system (str, optional): System prompt. Defaults to None.
+            save_messages (bool, optional): Whether to save the messages.
+                Defaults to None.
+            llm_options (LLMOptions, optional): LiteLLM options.
+                See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
+                Defaults to None.
+        """
         model, kwargs, history, user_message, _ = self.prepare_request(
             prompt,
             system=system,
@@ -77,7 +111,7 @@ class ChatLLMSession(ChatSession):
         )
         response = completion(model=model, messages=history, **kwargs)  # type: ignore
         try:
-            content = response.choices[0]["message"]["content"]
+            content: str = response.choices[0]["message"]["content"]
             assistant_message = ChatMessage(
                 role="assistant",
                 content=content,
@@ -101,7 +135,19 @@ class ChatLLMSession(ChatSession):
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
-    ):
+    ) -> str:
+        """
+        Generate a chat response from the LLM.
+
+        Args:
+            prompt (str): User prompt
+            system (str, optional): System prompt. Defaults to None.
+            save_messages (bool, optional): Whether to save the messages.
+                Defaults to None.
+            llm_options (LLMOptions, optional): LiteLLM options.
+                See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
+                Defaults to None.
+        """
         model, kwargs, history, user_message, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
@@ -109,7 +155,7 @@ class ChatLLMSession(ChatSession):
             model=model, messages=history, **kwargs
         )  # type: ignore
         try:
-            content = response.choices[0]["message"]["content"]
+            content: str = response.choices[0]["message"]["content"]
             assistant_message = ChatMessage(
                 role="assistant",
                 content=content,
@@ -136,7 +182,8 @@ class ChatLLMSession(ChatSession):
         validation_retries: int = 1,
         strict: Optional[bool] = None,
     ) -> Type[T]:  # type: ignore
-        """Generate a response from the AI and parse it into a response model.
+        """
+        Generate a response from the AI and parse it into a response model.
 
         Args:
             prompt (str): User prompt
@@ -201,7 +248,8 @@ class ChatLLMSession(ChatSession):
         validation_retries: int = 1,
         strict: Optional[bool] = None,
     ) -> Type[T]:  # type: ignore
-        """Generate a response from the AI and parse it into a response model.
+        """
+        Generate a response from the AI and parse it into a response model.
 
         Args:
             prompt (str): User prompt
@@ -261,17 +309,33 @@ class ChatLLMSession(ChatSession):
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
-    ):
+    ) -> Generator[dict[str, str], None, None]:
+        """
+        Generate a streaming response from the LLM.
+        Stream response contains "delta" and "response" keys.
+        - `delta` - latest response from the LLM model.
+        - `response` - contains the entire conversation history up to that point.
+
+        Args:
+            prompt (str): User prompt
+            system (str, optional): System prompt. Defaults to None.
+            save_messages (bool, optional): Whether to save the messages.
+                Defaults to None.
+            llm_options (LLMOptions, optional): LiteLLM options.
+                See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
+                Defaults to None.
+
+        Yields:
+            Generator[dict[str, str], None, None]
+        """
         model, kwargs, history, user_message, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
 
-        response = completion(
-            model=model, messages=history, stream=True, **kwargs  # type: ignore
-        )
+        response = completion(model=model, messages=history, stream=True, **kwargs)
         content = []
         for chunk in response:
-            delta = chunk["choices"][0]["delta"].get("content")  # type: ignore
+            delta: str = chunk["choices"][0]["delta"].get("content")  # type: ignore
             if delta:
                 content.append(delta)
                 yield {"delta": delta, "response": "".join(content)}
@@ -290,7 +354,25 @@ class ChatLLMSession(ChatSession):
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
-    ):
+    ) -> AsyncGenerator[dict[str, str], None]:
+        """
+        Generate a streaming response from the LLM.
+        Stream response contains "delta" and "response" keys.
+        - `delta` - latest response from the LLM model.
+        - `response` - contains the entire conversation history up to that point.
+
+        Args:
+            prompt (str): User prompt
+            system (str, optional): System prompt. Defaults to None.
+            save_messages (bool, optional): Whether to save the messages.
+                Defaults to None.
+            llm_options (LLMOptions, optional): LiteLLM options.
+                See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
+                Defaults to None.
+
+        Yields:
+            AsyncGenerator[dict[str, str], None]
+        """
         model, kwargs, history, user_message, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
@@ -300,7 +382,7 @@ class ChatLLMSession(ChatSession):
         )  # type: ignore
         content = []
         async for chunk in response:  # type: ignore
-            delta = chunk["choices"][0]["delta"].get("content")
+            delta: str = chunk["choices"][0]["delta"].get("content")
             if delta:
                 content.append(delta)
                 yield {"delta": delta, "response": "".join(content)}
