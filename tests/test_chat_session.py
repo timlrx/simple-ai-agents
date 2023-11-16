@@ -14,11 +14,11 @@ class UserDetail(BaseModel):
 
 
 def test_prepare_request():
-    ai = ChatLLMSession()
+    sess = ChatLLMSession()
     prompt = "Hello, how can I help you?"
     system = "Test system"
     llm_options: LLMOptions = {"model": "test-model", "temperature": 0.5}
-    model, kwargs, history, user_message, _ = ai.prepare_request(
+    model, kwargs, history, user_message, _ = sess.prepare_request(
         prompt, system=system, llm_options=llm_options
     )
     assert model == "test-model"
@@ -32,11 +32,11 @@ def test_prepare_request():
 
 
 def test_prepare_model_request():
-    ai = ChatLLMSession()
+    sess = ChatLLMSession()
     prompt = "Parse this input"
 
     llm_options: LLMOptions = {"model": "test-model", "temperature": 0.5}
-    model, kwargs, history, user_message, response_model = ai.prepare_request(
+    model, kwargs, history, user_message, response_model = sess.prepare_request(
         prompt, llm_options=llm_options, response_model=UserDetail
     )
     assert model == "test-model"
@@ -52,45 +52,45 @@ def test_prepare_model_request():
 
 
 def test_gen_model():
-    ai = ChatLLMSession()
-    response = ai.gen_model("Generate a user", response_model=UserDetail)
+    sess = ChatLLMSession()
+    response = sess.gen_model("Generate a user", response_model=UserDetail)
     assert response.name is not None
     assert response.age is not None
 
 
 @pytest.mark.asyncio
 async def test_gen_model_async():
-    ai = ChatLLMSession()
-    response = await ai.gen_model_async("Generate a user", response_model=UserDetail)
+    sess = ChatLLMSession()
+    response = await sess.gen_model_async("Generate a user", response_model=UserDetail)
     assert response.name is not None
     assert response.age is not None
 
 
 def test_gen():
-    ai = ChatLLMSession()
+    sess = ChatLLMSession()
     prompt = "1+1"
-    response = ai.gen(prompt)
+    response = sess.gen(prompt)
     assert len(response) > 0
-    assert ai.total_prompt_length > 0
-    assert ai.total_completion_length > 0
-    assert ai.total_length > 0
+    assert sess.total_prompt_length > 0
+    assert sess.total_completion_length > 0
+    assert sess.total_length > 0
 
 
 @pytest.mark.asyncio
 async def test_gen_async():
-    ai = ChatLLMSession()
+    sess = ChatLLMSession()
     prompt = "1+1"
-    response = await ai.gen_async(prompt)
+    response = await sess.gen_async(prompt)
     assert len(response) > 0
-    assert ai.total_prompt_length > 0
-    assert ai.total_completion_length > 0
-    assert ai.total_length > 0
+    assert sess.total_prompt_length > 0
+    assert sess.total_completion_length > 0
+    assert sess.total_length > 0
 
 
 def test_stream():
-    ai = ChatLLMSession()
+    sess = ChatLLMSession()
     prompt = "1+1"
-    response = ai.stream(prompt)
+    response = sess.stream(prompt)
     for i in response:
         assert len(i["delta"]) > 0
         assert len(i["response"]) > 0
@@ -98,9 +98,9 @@ def test_stream():
 
 @pytest.mark.asyncio
 async def test_stream_async():
-    ai = ChatLLMSession()
+    sess = ChatLLMSession()
     prompt = "1+1"
-    response = ai.stream_async(prompt)
+    response = sess.stream_async(prompt)
     async for i in response:
         assert len(i["delta"]) > 0
         assert len(i["response"]) > 0
