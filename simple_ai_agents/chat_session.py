@@ -127,6 +127,71 @@ class ChatLLMSession(ChatSession):
 
         return content
 
+    async def gen_model_async(
+        self,
+        prompt: str,
+        response_model: Type[T],
+        system: Optional[str] = None,
+        llm_options: Optional[LLMOptions] = None,
+        validation_retries: int = 1,
+        strict: Optional[bool] = None,
+    ) -> Type[T]:  # type: ignore
+        """Generate a response from the AI and parse it into a response model.
+
+        Args:
+            prompt (str): User prompt
+            system (str, optional): System prompt. Defaults to None.
+            llm_options (LLMOptions, optional): LiteLLM options.
+                See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
+                Defaults to None.
+            validation_retries (int, optional):
+                Number of times to retry generating a valid response model.
+            response_model (BaseModel): The response model to use for parsing the response
+            strict (bool, optional): Whether to use strict json parsing. Defaults to None.
+
+        Returns:
+            Type[T]: An instance of the response model
+        """
+        if not response_model:
+            raise ValueError("No response model provided.")
+        (
+            model,
+            kwargs,
+            history,
+            user_message,
+            response_model,
+        ) = self.prepare_request(
+            prompt,
+            system=system,
+            response_model=response_model,
+            llm_options=llm_options,
+        )  # type: ignore
+        retries = 0
+        while retries <= validation_retries:
+            # Excepts ValidationError, and JSONDecodeError
+            try:
+                response: ModelResponse = await acompletion(
+                    model=model, messages=history, **kwargs
+                )  # type: ignore
+                model: Type[T] = process_response(
+                    response, response_model, strict=strict
+                )  # type: ignore
+                self.total_prompt_length += response["usage"]["prompt_tokens"]
+                self.total_completion_length += response["usage"]["completion_tokens"]
+                self.total_length += response["usage"]["total_tokens"]
+            except (ValidationError, JSONDecodeError) as e:
+                history.append(response.choices[0].message.model_dump())  # type: ignore
+                history.append(
+                    {
+                        "role": "user",
+                        "content": f"Recall the function correctly, exceptions found\n{e}",
+                    }
+                )
+                retries += 1
+                if retries > validation_retries:
+                    raise e
+            return model
+
     def gen_model(
         self,
         prompt: str,
@@ -188,7 +253,6 @@ class ChatLLMSession(ChatSession):
                 retries += 1
                 if retries > validation_retries:
                     raise e
-            # TODO: handle empty case
             return model
 
     def stream(

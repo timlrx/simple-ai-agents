@@ -58,6 +58,14 @@ def test_gen_model():
     assert response.age is not None
 
 
+@pytest.mark.asyncio
+async def test_gen_model_async():
+    ai = ChatLLMSession()
+    response = await ai.gen_model_async("Generate a user", response_model=UserDetail)
+    assert response.name is not None
+    assert response.age is not None
+
+
 def test_gen():
     ai = ChatLLMSession()
     prompt = "1+1"
