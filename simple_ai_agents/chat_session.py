@@ -5,10 +5,13 @@ import litellm
 from instructor.patch import handle_response_model, process_response
 from litellm import ModelResponse, acompletion, completion
 from pydantic import BaseModel, ValidationError
+from rich import print
 
 from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions
 
 litellm.telemetry = False
+litellm.add_function_to_prompt = True  # add function to prompt for non openai models
+litellm.drop_params = True  # drop params if unsupported by provider
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -115,7 +118,7 @@ class ChatLLMSession(ChatSession):
             assistant_message = ChatMessage(
                 role="assistant",
                 content=content,
-                finish_reason=response.choices[0]["message"]["content"],
+                finish_reason=response.choices[0]["finish_reason"],
                 prompt_length=response["usage"]["prompt_tokens"],
                 completion_length=response["usage"]["completion_tokens"],
                 total_length=response["usage"]["total_tokens"],
@@ -159,7 +162,7 @@ class ChatLLMSession(ChatSession):
             assistant_message = ChatMessage(
                 role="assistant",
                 content=content,
-                finish_reason=response.choices[0]["message"]["content"],
+                finish_reason=response.choices[0]["finish_reason"],
                 prompt_length=response["usage"]["prompt_tokens"],
                 completion_length=response["usage"]["completion_tokens"],
                 total_length=response["usage"]["total_tokens"],
@@ -284,6 +287,7 @@ class ChatLLMSession(ChatSession):
             # Excepts ValidationError, and JSONDecodeError
             try:
                 response = completion(model=model, messages=history, **kwargs)  # type: ignore
+                print(response)
                 model: Type[T] = process_response(
                     response, response_model, strict=strict
                 )  # type: ignore
