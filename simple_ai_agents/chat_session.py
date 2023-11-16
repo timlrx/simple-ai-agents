@@ -1,9 +1,10 @@
+from json import JSONDecodeError
 from typing import Optional, Type, TypeVar
 
 import litellm
 from instructor.patch import handle_response_model, process_response
 from litellm import ModelResponse, acompletion, completion
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions
 
@@ -131,9 +132,26 @@ class ChatLLMSession(ChatSession):
         prompt: str,
         response_model: Type[T],
         system: Optional[str] = None,
-        save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
-    ) -> Type[T]:
+        validation_retries: int = 1,
+        strict: Optional[bool] = None,
+    ) -> Type[T]:  # type: ignore
+        """Generate a response from the AI and parse it into a response model.
+
+        Args:
+            prompt (str): User prompt
+            system (str, optional): System prompt. Defaults to None.
+            llm_options (LLMOptions, optional): LiteLLM options.
+                See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
+                Defaults to None.
+            validation_retries (int, optional):
+                Number of times to retry generating a valid response model.
+            response_model (BaseModel): The response model to use for parsing the response
+            strict (bool, optional): Whether to use strict json parsing. Defaults to None.
+
+        Returns:
+            Type[T]: An instance of the response model
+        """
         if not response_model:
             raise ValueError("No response model provided.")
         (
@@ -148,18 +166,30 @@ class ChatLLMSession(ChatSession):
             response_model=response_model,
             llm_options=llm_options,
         )  # type: ignore
-        response = completion(model=model, messages=history, **kwargs)  # type: ignore
-        try:
-            # content = response["choices"][0]["message"]["function_call"]
-            model = process_response(response, response_model)
-            self.total_prompt_length += response["usage"]["prompt_tokens"]
-            self.total_completion_length += response["usage"]["completion_tokens"]
-            self.total_length += response["usage"]["total_tokens"]
-        except KeyError:
-            raise KeyError(f"No AI generation: {response}")
-
-        # TODO: handle empty case
-        return model  # type: ignore
+        retries = 0
+        while retries <= validation_retries:
+            # Excepts ValidationError, and JSONDecodeError
+            try:
+                response = completion(model=model, messages=history, **kwargs)  # type: ignore
+                model: Type[T] = process_response(
+                    response, response_model, strict=strict
+                )  # type: ignore
+                self.total_prompt_length += response["usage"]["prompt_tokens"]
+                self.total_completion_length += response["usage"]["completion_tokens"]
+                self.total_length += response["usage"]["total_tokens"]
+            except (ValidationError, JSONDecodeError) as e:
+                history.append(response.choices[0].message.model_dump())  # type: ignore
+                history.append(
+                    {
+                        "role": "user",
+                        "content": f"Recall the function correctly, exceptions found\n{e}",
+                    }
+                )
+                retries += 1
+                if retries > validation_retries:
+                    raise e
+            # TODO: handle empty case
+            return model
 
     def stream(
         self,
