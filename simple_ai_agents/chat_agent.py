@@ -37,6 +37,8 @@ class ChatAgent(BaseModel):
             where the keys are the session IDs and the values
             are the corresponding `ChatSession` objects.
         default_session (ChatSession): The default chat session.
+        character (str): The name of the chatbot for console display.
+        ai_text_color (str): Print color of the chatbot's messages.
 
     Methods:
         new_session: Creates a new chat session.
@@ -59,6 +61,26 @@ class ChatAgent(BaseModel):
         ai_text_color: Optional[str] = None,
         **kwargs,
     ):
+        """
+        Initialize a chatbot agent.
+
+        Args:
+            character (str, optional): The name of the chatbot for console display.
+                Defaults to None.
+            system (str, optional): System prompt for chatbot message.
+                If None is provided it defaults to "You are a helpful assistant."
+            id (Union[str, UUID], optional): Initial session ID of the chatbot.
+                Defaults to uuid4().
+            prime (bool, optional): Whether to prime the chatbot with initial messages.
+                Defaults to True.
+            default_session (bool, optional): Whether to create a default chat session.
+                Defaults to True.
+            console (bool, optional): Whether to enable interactive console mode.
+                Defaults to False.
+            ai_text_color (str, optional): Print color of the chatbot's messages.
+            **kwargs: Additional options to pass to the `new_session` method.
+                To customize GPT options, pass a `llm_options` dictionary.
+        """
         system_format = self.build_system(system)
         sessions = {}
         new_default_session = None
@@ -85,6 +107,14 @@ class ChatAgent(BaseModel):
         set_default: bool = True,
         **kwargs,
     ) -> ChatLLMSession:
+        """
+        Create a new chat session.
+
+        Args:
+            set_default (bool, optional): Whether to set the new session as the default.
+                Defaults to True.
+            **kwargs: Additional options to pass to the `ChatLLMSession` constructor.
+        """
         sess = ChatLLMSession(**kwargs)
         self.sessions[sess.id] = sess
         if set_default:
@@ -92,6 +122,9 @@ class ChatAgent(BaseModel):
         return sess
 
     def get_session(self, id: Optional[Union[str, UUID]] = None) -> ChatLLMSession:
+        """
+        Get a chat session by ID. If no ID is provided, return the default session.
+        """
         try:
             sess = self.sessions[id] if id else self.default_session
         except KeyError:
@@ -101,13 +134,22 @@ class ChatAgent(BaseModel):
         return sess
 
     def list_sessions(self) -> list[Union[str, UUID]]:
+        """
+        List all session IDs.
+        """
         return list(self.sessions.keys())
 
     def reset_session(self, id: Optional[Union[str, UUID]] = None) -> None:
+        """
+        Reset a chat session by ID.
+        """
         sess = self.get_session(id)
         sess.messages = []
 
     def delete_session(self, id: Optional[Union[str, UUID]] = None) -> None:
+        """
+        Delete a chat session by ID.
+        """
         sess = self.get_session(id)
         if self.default_session:
             if sess.id == self.default_session.id:
@@ -187,6 +229,9 @@ class ChatAgent(BaseModel):
     def interactive_console(
         self, character: Optional[str] = None, prime: bool = True
     ) -> None:
+        """
+        Start an interactive console for the chatbot.
+        """
         console = Console(highlight=False, force_jupyter=False)
         sess = self.default_session
         ai_text_color = self.ai_text_color
@@ -252,6 +297,7 @@ class ChatAgentAsync(ChatAgent):
         prime: bool = True,
         default_session: bool = True,
         console: bool = False,
+        ai_text_color: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(
@@ -261,6 +307,7 @@ class ChatAgentAsync(ChatAgent):
             prime=prime,
             default_session=default_session,
             console=console,
+            ai_text_color=ai_text_color,
             **kwargs,
         )
 
@@ -271,11 +318,7 @@ class ChatAgentAsync(ChatAgent):
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
-        console_output: bool = False,
     ) -> str:
-        """
-        Generate a response from the AI.
-        """
         sess = self.get_session(id)
         return await sess.gen_async(
             prompt,
@@ -292,9 +335,6 @@ class ChatAgentAsync(ChatAgent):
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
-        """
-        Generate a response from the AI.
-        """
         sess = self.get_session(id)
         return sess.stream_async(
             prompt,
