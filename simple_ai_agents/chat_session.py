@@ -5,7 +5,6 @@ import litellm
 from instructor.patch import handle_response_model, process_response
 from litellm import ModelResponse, acompletion, completion
 from pydantic import BaseModel, ValidationError
-from rich import print
 
 from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions
 
@@ -287,7 +286,6 @@ class ChatLLMSession(ChatSession):
             # Excepts ValidationError, and JSONDecodeError
             try:
                 response = completion(model=model, messages=history, **kwargs)  # type: ignore
-                print(response)
                 model: Type[T] = process_response(
                     response, response_model, strict=strict
                 )  # type: ignore

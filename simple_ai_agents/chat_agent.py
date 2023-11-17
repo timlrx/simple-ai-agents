@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Type, TypeVar, Union
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel
@@ -9,6 +9,8 @@ from simple_ai_agents.chat_session import ChatLLMSession
 from simple_ai_agents.models import LLMOptions
 
 # TODO: Add save, load
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class ChatAgent(BaseModel):
@@ -219,6 +221,25 @@ class ChatAgent(BaseModel):
             llm_options=llm_options,
         )
 
+    def gen_model(
+        self,
+        prompt: Union[str, Any],
+        response_model: Type[T],
+        id: Optional[Union[str, UUID]] = None,
+        system: Optional[str] = None,
+        llm_options: Optional[LLMOptions] = None,
+    ):
+        """
+        Generate a pydantic typed model from the AI.
+        """
+        sess = self.get_session(id)
+        return sess.gen_model(
+            prompt,
+            response_model,
+            system=system,
+            llm_options=llm_options,
+        )
+
     def build_system(self, system: Optional[str] = None) -> str:
         default = "You are a helpful assistant."
         if system:
@@ -340,6 +361,22 @@ class ChatAgentAsync(ChatAgent):
             prompt,
             system=system,
             save_messages=save_messages,
+            llm_options=llm_options,
+        )
+
+    async def gen_model(
+        self,
+        prompt: Union[str, Any],
+        response_model: Type[T],
+        id: Optional[Union[str, UUID]] = None,
+        system: Optional[str] = None,
+        llm_options: Optional[LLMOptions] = None,
+    ):
+        sess = self.get_session(id)
+        return await sess.gen_model_async(
+            prompt,
+            response_model,
+            system=system,
             llm_options=llm_options,
         )
 

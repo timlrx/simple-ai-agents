@@ -2,11 +2,17 @@ import logging
 
 import pytest
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 from simple_ai_agents.chat_agent import ChatAgent, ChatAgentAsync
 
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 load_dotenv()
+
+
+class UserDetail(BaseModel):
+    name: str
+    age: int
 
 
 def test_new_session():
@@ -52,6 +58,13 @@ def test_call():
 def test_default_build_system():
     chatbot = ChatAgent()
     assert chatbot.build_system() == "You are a helpful assistant."
+
+
+def test_gen_model():
+    chatbot = ChatAgent()
+    response = chatbot.gen_model("Generate a user", response_model=UserDetail)
+    assert response.name is not None
+    assert response.age is not None
 
 
 @pytest.mark.asyncio
