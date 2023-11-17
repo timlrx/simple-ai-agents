@@ -1,12 +1,9 @@
-import logging
-
 from dotenv import load_dotenv
-from rich import print
 
 from simple_ai_agents.chat_agent import ChatAgent
 from simple_ai_agents.models import LLMOptions
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+# logging.basicConfig(level=logging.INFO, format="%(message)s")
 load_dotenv()
 
 openai: LLMOptions = {"model": "gpt-3.5-turbo", "temperature": 0.7}
@@ -24,13 +21,9 @@ default_options = openai
 
 if __name__ == "__main__":
     chatbot = ChatAgent(
-        system="You are a helpful assistant", console=False, llm_options=default_options
+        system="You are a helpful assistant", llm_options=default_options
     )
-    results = chatbot("Generate 2 random numbers between 0 to 100")
-    print(results)
-    results = chatbot("Which of the two numbers is bigger?")
-    print(results)
+    results = chatbot("Generate 2 random numbers between 0 to 100", console_output=True)
+    results = chatbot("Which of the two numbers is bigger?", console_output=True)
     chatbot.new_session()
-    print("new session created...")
-    results = chatbot("Which of the two numbers is bigger?")
-    print(results)
+    results = chatbot("Which of the two numbers is bigger?", console_output=True)

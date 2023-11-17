@@ -337,20 +337,20 @@ class ChatLLMSession(ChatSession):
         )
 
         response = completion(model=model, messages=history, stream=True, **kwargs)
-        content = []
+        content_chunks = []
         for chunk in response:
             delta: str = chunk["choices"][0]["delta"].get("content")  # type: ignore
             if delta:
-                content.append(delta)
-                yield {"delta": delta, "response": "".join(content)}
+                content_chunks.append(delta)
+                yield {"delta": delta, "response": "".join(content_chunks)}
 
+        content = "".join(content_chunks)
         # streaming does not currently return token counts
         assistant_message = ChatMessage(
             role="assistant",
-            content="".join(content),
+            content=content,
         )
         self.add_messages(user_message, assistant_message, save_messages)
-        return
 
     async def stream_async(
         self,
@@ -384,17 +384,17 @@ class ChatLLMSession(ChatSession):
         response: ModelResponse = await acompletion(
             model=model, messages=history, stream=True, **kwargs
         )  # type: ignore
-        content = []
+        content_chunks = []
         async for chunk in response:  # type: ignore
             delta: str = chunk["choices"][0]["delta"].get("content")
             if delta:
-                content.append(delta)
-                yield {"delta": delta, "response": "".join(content)}
+                content_chunks.append(delta)
+                yield {"delta": delta, "response": "".join(content_chunks)}
 
+        content = "".join(content_chunks)
         # streaming does not currently return token counts
         assistant_message = ChatMessage(
             role="assistant",
-            content="".join(content),
+            content=content,
         )
         self.add_messages(user_message, assistant_message, save_messages)
-        return

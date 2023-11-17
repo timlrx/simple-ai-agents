@@ -45,6 +45,8 @@ class ChatAgent(BaseModel):
 
     default_session: Optional[ChatLLMSession]
     sessions: Dict[Union[str, UUID], ChatLLMSession] = {}
+    character: Optional[str] = "Chat Agent"
+    ai_text_color: str = "bright_magenta"
 
     def __init__(
         self,
@@ -54,6 +56,7 @@ class ChatAgent(BaseModel):
         prime: bool = True,
         default_session: bool = True,
         console: bool = False,
+        ai_text_color: Optional[str] = None,
         **kwargs,
     ):
         system_format = self.build_system(system)
@@ -61,19 +64,21 @@ class ChatAgent(BaseModel):
         new_default_session = None
         super().__init__(default_session=new_default_session, sessions=sessions)
 
+        if character:
+            self.character = character
+        if ai_text_color:
+            self.ai_text_color = ai_text_color
         if default_session:
             new_default_session = self.new_session(
                 set_default=True, system=system_format, id=id, **kwargs
             )
-
         if console:
             if not new_default_session:
                 raise ValueError(
                     "A default session needs to exists to run in interactive mode."
                 )
-            character = "Chat Agent" if not character else character
             new_default_session.title = character
-            self.interactive_console(character=character, prime=prime)
+            self.interactive_console(character=self.character, prime=prime)
 
     def new_session(
         self,
@@ -125,17 +130,33 @@ class ChatAgent(BaseModel):
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
+        console_output: bool = False,
     ) -> str:
         """
         Generate a response from the AI.
         """
         sess = self.get_session(id)
-        return sess.gen(
-            prompt,
-            system=system,
-            save_messages=save_messages,
-            llm_options=llm_options,
-        )
+        if console_output:
+            console = Console(highlight=False, force_jupyter=False)
+            ai_text_color = self.ai_text_color
+            console.print(f"[b]{self.character}[/b]: ", end="", style=ai_text_color)
+            stream = sess.stream(
+                prompt,
+                system=system,
+                save_messages=save_messages,
+                llm_options=llm_options,
+            )
+            for chunk in stream:
+                console.print(chunk["delta"], end="", style=ai_text_color)
+            console.print()
+            return chunk["response"]  # type: ignore
+        else:
+            return sess.gen(
+                prompt,
+                system=system,
+                save_messages=save_messages,
+                llm_options=llm_options,
+            )
 
     def stream(
         self,
@@ -168,7 +189,7 @@ class ChatAgent(BaseModel):
     ) -> None:
         console = Console(highlight=False, force_jupyter=False)
         sess = self.default_session
-        ai_text_color = "bright_magenta"
+        ai_text_color = self.ai_text_color
 
         if not sess:
             raise ValueError("No default session exists.")
@@ -250,6 +271,7 @@ class ChatAgentAsync(ChatAgent):
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
+        console_output: bool = False,
     ) -> str:
         """
         Generate a response from the AI.

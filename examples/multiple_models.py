@@ -26,19 +26,21 @@ def store_conversation():
     """
     storekeeper = ChatAgent(
         system="You are a helpful storekeeper",
+        character="storekeeper",
         llm_options=mistral,
+        ai_text_color="bright_blue",
     )
     customer = ChatAgent(
         system="You are a customer at a shop. Speak concisely and clearly.",
+        character="customer",
         llm_options=llama2,
+        ai_text_color="bright_green",
     )
     runs = 0
     customer_reply = "Hi"
     while runs < 3:
-        storekeeper_reply = storekeeper(customer_reply)
-        print(storekeeper_reply)
-        customer_reply = customer(storekeeper_reply)
-        print(customer_reply)
+        storekeeper_reply = storekeeper(customer_reply, console_output=True)
+        customer_reply = customer(storekeeper_reply, console_output=True)
         runs += 1
     print("---")
     print(storekeeper.get_session())
