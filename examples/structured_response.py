@@ -30,7 +30,7 @@ class Recipe(BaseModel):
     ingredients: list[Ingredient]
 
 
-def recipe():
+def gen_recipe(recipe_name: str):
     """
     AI generated recipe. We use openai to generate the recipe in a structured format
     and a local mistral model to generate the tips.
@@ -42,14 +42,16 @@ def recipe():
         system="You are an Italian chef", llm_options=mistral, character="Chef"
     )
     recipe = chatbot.gen_model(
-        "Generate a aglio olio recipe", response_model=Recipe, llm_options=openai
+        f"Generate a {recipe_name} recipe", response_model=Recipe, llm_options=openai
     )
     print(recipe)
     chatbot(
         f"Provide some helpful tips to cook this dish:\n {recipe}",
         console_output=True,
     )
+    return recipe
 
 
 if __name__ == "__main__":
-    recipe()
+    pasta = gen_recipe("aglio olio")
+    # Since pasta is a pydantic model, we can easily add it to a database or serve it as an API
