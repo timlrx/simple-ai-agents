@@ -13,6 +13,7 @@ openai = "^1.0.0"
 litellm = "^1.2.0"
 click = "^8.1.7"
 instructor = "^0.3.4"
+python-dateutil = "^2.8.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.9.0"

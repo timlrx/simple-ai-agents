@@ -1,0 +1,30 @@
+{
+    "id": "122b1943-8995-41e6-8f31-5773098cb86b",
+    "created_at": "2023-11-21T15:14:24.754746Z",
+    "system": "You are a helpful assistant.",
+    "params": {},
+    "messages": [
+        {
+            "role": "user",
+            "content": "Hello",
+            "received_at": "2023-11-21T15:14:24.754766Z"
+        },
+        {
+            "role": "assistant",
+            "content": "Hello! How can I assist you today?",
+            "received_at": "2023-11-21T15:14:27.287442Z",
+            "finish_reason": "stop",
+            "prompt_length": 18,
+            "completion_length": 9,
+            "total_length": 27
+        }
+    ],
+    "input_fields": [],
+    "save_messages": true,
+    "total_prompt_length": 18,
+    "total_completion_length": 9,
+    "total_length": 27,
+    "llm_options": {
+        "model": "gpt-3.5-turbo"
+    }
+}

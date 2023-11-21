@@ -1,4 +1,5 @@
 import logging
+import os
 
 import pytest
 from dotenv import load_dotenv
@@ -32,6 +33,38 @@ def test_list_sessions():
     session1 = chatbot.get_session()
     session2 = chatbot.new_session()
     assert set(chatbot.list_sessions()) == set({session1.id, session2.id})
+
+
+def test_save_session():
+    output_path_csv = "./tests/output/chat_session.csv"
+    output_path_json = "./tests/output/chat_session.json"
+    if os.path.exists(output_path_csv):
+        os.remove(output_path_csv)
+    if os.path.exists(output_path_json):
+        os.remove(output_path_json)
+    chatbot = ChatAgent()
+    session = chatbot.get_session()
+    chatbot("Hello")
+    chatbot.save_session(output_path_csv, session.id)
+    assert os.path.exists(output_path_csv)
+    chatbot.save_session(output_path_json, session.id, format="json")
+    assert os.path.exists(output_path_json)
+
+
+def test_load_session_csv():
+    input_path_csv = "./tests/input/chat_session.csv"
+    chatbot = ChatAgent()
+    session = chatbot.load_session(input_path_csv)
+    assert len(session.messages) == 2  # type: ignore
+    assert session.messages[0].content == "Hello"  # type: ignore
+
+
+def test_load_session_json():
+    input_path_json = "./tests/input/chat_session.json"
+    chatbot = ChatAgent()
+    session = chatbot.load_session(input_path_json)
+    assert len(session.messages) == 2  # type: ignore
+    assert session.messages[0].content == "Hello"  # type: ignore
 
 
 def test_reset_session():

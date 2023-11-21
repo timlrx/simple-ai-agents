@@ -1,14 +1,16 @@
+import csv
+import datetime
+import json
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Dict, Optional, Type, TypeVar, Union
 from uuid import UUID, uuid4
 
+from dateutil import tz
 from pydantic import BaseModel
 from rich.console import Console
 
 from simple_ai_agents.chat_session import ChatLLMSession
-from simple_ai_agents.models import LLMOptions
-
-# TODO: Add save, load
+from simple_ai_agents.models import ChatMessage, LLMOptions
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -285,6 +287,78 @@ class ChatAgent(BaseModel):
 
     def __repr__(self) -> str:
         return ""
+
+    def save_session(
+        self,
+        output_path: Optional[str] = None,
+        id: Optional[Union[str, UUID]] = None,
+        format: str = "csv",
+    ):
+        sess = self.get_session(id)
+        sess = self.get_session(id)
+        sess_dict = sess.model_dump(
+            exclude={"auth", "api_url", "input_fields"},
+            exclude_none=True,
+        )
+        output_path = output_path or f"chat_session.{format}"
+        if format == "csv":
+            with open(output_path, "w", encoding="utf-8") as f:
+                fields = [
+                    "role",
+                    "content",
+                    "received_at",
+                    "prompt_length",
+                    "completion_length",
+                    "total_length",
+                    "finish_reason",
+                ]
+                w = csv.DictWriter(f, fieldnames=fields)
+                w.writeheader()
+                for message in sess_dict["messages"]:
+                    # datetime must be in common format to be loaded into spreadsheet
+                    # for human-readability, the timezone is set to local machine
+                    local_datetime = message["received_at"].astimezone()
+                    message["received_at"] = local_datetime.strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                    w.writerow(message)
+        elif format == "json":
+            with open(output_path, "w") as f:
+                f.write(sess.model_dump_json(exclude_none=True))
+
+    def load_session(self, input_path: str, id: Union[str, UUID] = uuid4(), **kwargs):
+        assert input_path.endswith(".csv") or input_path.endswith(
+            ".json"
+        ), "Only CSV and JSON imports are accepted."
+
+        if input_path.endswith(".csv"):
+            with open(input_path, "r", encoding="utf-8") as f:
+                r = csv.DictReader(f)
+                messages = []
+                for row in r:
+                    # need to convert the datetime back to UTC
+                    local_datetime = datetime.datetime.strptime(
+                        row["received_at"], "%Y-%m-%d %H:%M:%S"
+                    ).replace(tzinfo=tz.tzlocal())
+                    row["received_at"] = local_datetime.astimezone(
+                        datetime.timezone.utc
+                    )
+                    # https://stackoverflow.com/a/68305271
+                    row = {k: (None if v == "" else v) for k, v in row.items()}
+                    messages.append(ChatMessage(**row))  # type: ignore
+
+            sess = self.new_session(id=id, **kwargs)
+            sess.messages = messages
+            return sess
+
+        if input_path.endswith(".json"):
+            with open(input_path, "r") as f:
+                sess_dict = json.loads(f.read())
+            # update session with info not loaded, e.g. auth/api_url
+            for arg in kwargs:
+                sess_dict[arg] = kwargs[arg]
+            sess = self.new_session(**sess_dict)
+            return sess
 
     # Tabulators for returning total token counts
     def message_totals(self, attr: str, id: Optional[Union[str, UUID]] = None) -> int:
