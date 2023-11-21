@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "simple-ai-agents"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Timothy Lin <timothy0336@hotmail.com>"]
 readme = "README.md"
@@ -14,15 +14,18 @@ litellm = "^1.2.0"
 click = "^8.1.7"
 instructor = "^0.3.4"
 python-dateutil = "^2.8.2"
+rich = "^13.7.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.9.0"
 pre-commit = "^2.20.0"
 pytest = "^7.4.0"
-rich = "^13.6.0"
 pytest-mock = "^3.12.0"
 pytest-asyncio = "^0.21.1"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+aichat = "simple_ai_agents.cli:interactive_chat"

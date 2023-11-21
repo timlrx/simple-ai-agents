@@ -55,10 +55,10 @@ See the examples folder for other use cases.
 
 ### CLI
 
-Run the chatbot in the terminal with:
+Ensure that you have the necessary environment variables set up. Run the chatbot in the terminal with:
 
 ```sh
-python simple_ai_agents/cli.py --prime
+aichat --prime
 ```
 
 The CLI supports the following options:
