@@ -2,6 +2,7 @@ from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Generator, Optional, Type, TypeVar
 
 import litellm
+from instructor.function_calls import Mode
 from instructor.patch import handle_response_model, process_response
 from litellm import ModelResponse, acompletion, completion
 from pydantic import BaseModel, ValidationError
@@ -82,7 +83,9 @@ class ChatLLMSession(ChatSession):
         kwargs = {k: v for k, v in litellm_options.items() if k != "model"}
 
         if response_model:
-            response_model, fn_kwargs = handle_response_model(response_model, kwargs)
+            response_model, fn_kwargs = handle_response_model(
+                response_model=response_model, kwargs=kwargs, mode=Mode.FUNCTIONS
+            )
             # Add functions and function_call to kwargs
             kwargs.update(fn_kwargs)
         return model, kwargs, history, user_message, response_model
@@ -223,7 +226,11 @@ class ChatLLMSession(ChatSession):
                     model=model, messages=history, **kwargs
                 )  # type: ignore
                 model: Type[T] = process_response(
-                    response, response_model, strict=strict
+                    response,
+                    response_model=response_model,
+                    stream=False,
+                    strict=strict,
+                    mode=Mode.FUNCTIONS,
                 )  # type: ignore
                 self.total_prompt_length += response["usage"]["prompt_tokens"]
                 self.total_completion_length += response["usage"]["completion_tokens"]
@@ -287,7 +294,11 @@ class ChatLLMSession(ChatSession):
             try:
                 response = completion(model=model, messages=history, **kwargs)  # type: ignore
                 model: Type[T] = process_response(
-                    response, response_model, strict=strict
+                    response,
+                    response_model=response_model,
+                    stream=False,
+                    strict=strict,
+                    mode=Mode.FUNCTIONS,
                 )  # type: ignore
                 self.total_prompt_length += response["usage"]["prompt_tokens"]
                 self.total_completion_length += response["usage"]["completion_tokens"]

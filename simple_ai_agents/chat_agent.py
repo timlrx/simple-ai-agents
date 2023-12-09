@@ -295,9 +295,7 @@ class ChatAgent(BaseModel):
         format: str = "csv",
     ):
         sess = self.get_session(id)
-        sess = self.get_session(id)
         sess_dict = sess.model_dump(
-            exclude={"auth", "api_url", "input_fields"},
             exclude_none=True,
         )
         output_path = output_path or f"chat_session.{format}"
