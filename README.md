@@ -55,10 +55,10 @@ See the examples folder for other use cases.
 
 ### CLI
 
-Ensure that you have the necessary environment variables set up. Run the chatbot in the terminal with:
+Ensure that you have the necessary environment variables set up. Usage:
 
 ```sh
-aichat --prime
+aichat [OPTIONS] [PROMPT]
 ```
 
 The CLI supports the following options:
@@ -66,6 +66,22 @@ The CLI supports the following options:
 - `--character`: The name of the chat agent.
 - `--model`: Specify the LLM model e.g. gpt-3.5-turbo, ollama/mistral etc. Uses gpt-3.5-turbo by default.
 - `--temperature`: Specify the temperature for the LLM model. Uses 0.7 by default.
+- `--system`: System prompt.
+- `--help`
+
+#### Interactive open-ended chat
+
+```sh
+aichat --prime
+```
+
+#### Pass in prompts as arguments
+
+Uses a local instance of the mistral model from [ollama][ollama] to summarize the README file.
+
+```sh
+aichat --model=ollama/mistral "Summarize this file:\n $(cat README.md)"
+```
 
 Looking for an option that is not available? Open an issue or submit a PR!
 
