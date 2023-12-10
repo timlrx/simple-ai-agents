@@ -17,12 +17,15 @@ load_dotenv()
     Uses gpt-3.5-turbo by default.""",
 )
 @click.option("--temperature", default=0.7, help="LLM temperature. Default is 0.7.")
-def interactive_chat(character, prime, model, temperature):
+@click.option("--system", default=SYSTEM_PROMPT, help="System prompt")
+@click.argument("prompt", nargs=1, required=False)
+def interactive_chat(character, prime, model, temperature, system, prompt):
     ChatAgent(
         character=character,
         prime=prime,
         console=True,
-        system=SYSTEM_PROMPT,
+        system=system,
+        prompt=prompt,
         llm_options={"model": model, "temperature": temperature},
     )
 

@@ -104,7 +104,12 @@ class ChatAgent(BaseModel):
                     "A default session needs to exists to run in interactive mode."
                 )
             new_default_session.title = character
-            self.interactive_console(character=self.character, prime=prime)
+            # print(kwargs)
+            self.interactive_console(
+                character=self.character,
+                prime=prime,
+                prompt=kwargs["prompt"] if "prompt" in kwargs else None,
+            )
 
     def new_session(
         self,
@@ -250,7 +255,10 @@ class ChatAgent(BaseModel):
             return default
 
     def interactive_console(
-        self, character: Optional[str] = None, prime: bool = True
+        self,
+        character: Optional[str] = None,
+        prime: bool = True,
+        prompt: Optional[str] = None,
     ) -> None:
         """
         Start an interactive console for the chatbot.
@@ -268,10 +276,16 @@ class ChatAgent(BaseModel):
             for chunk in sess.stream("Hello!"):
                 console.print(chunk["delta"], end="", style=ai_text_color)
 
+        start = True
         while True:
             console.print()
             try:
-                user_input = console.input("[b]You:[/b] ").strip()
+                user_input = (
+                    prompt
+                    if start and prompt
+                    else console.input("[b]You:[/b] ").strip()
+                )
+                start = False
                 if not user_input:
                     break
 
