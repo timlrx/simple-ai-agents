@@ -63,6 +63,7 @@ class ChatAgent(BaseModel):
         default_session: bool = True,
         console: bool = False,
         ai_text_color: Optional[str] = None,
+        display_names: bool = True,
         **kwargs,
     ):
         """
@@ -82,6 +83,8 @@ class ChatAgent(BaseModel):
             console (bool, optional): Whether to enable interactive console mode.
                 Defaults to False.
             ai_text_color (str, optional): Print color of the chatbot's messages.
+            display_names (bool, optional):
+                Whether to display character names in the console.
             **kwargs: Additional options to pass to the `new_session` method.
                 To customize GPT options, pass a `llm_options` dictionary.
         """
@@ -108,6 +111,7 @@ class ChatAgent(BaseModel):
             self.interactive_console(
                 character=self.character,
                 prime=prime,
+                display_names=display_names,
                 prompt=kwargs["prompt"] if "prompt" in kwargs else None,
             )
 
@@ -259,6 +263,7 @@ class ChatAgent(BaseModel):
         character: Optional[str] = None,
         prime: bool = True,
         prompt: Optional[str] = None,
+        display_names: bool = True,
     ) -> None:
         """
         Start an interactive console for the chatbot.
@@ -266,13 +271,17 @@ class ChatAgent(BaseModel):
         console = Console(highlight=False, force_jupyter=False)
         sess = self.default_session
         ai_text_color = self.ai_text_color
+        user_prompt_suffix = "[b]You:[/b]" if display_names else "> "
+        agent_prompt_suffix = (
+            f"[b]{character}[/b]: " if display_names and character else ""
+        )
 
         if not sess:
             raise ValueError("No default session exists.")
 
         # prime with a unique starting response to the user
         if prime:
-            console.print(f"[b]{character}[/b]: ", end="", style=ai_text_color)
+            console.print(agent_prompt_suffix, end="", style=ai_text_color)
             for chunk in sess.stream("Hello!"):
                 console.print(chunk["delta"], end="", style=ai_text_color)
 
@@ -283,13 +292,13 @@ class ChatAgent(BaseModel):
                 user_input = (
                     prompt
                     if start and prompt
-                    else console.input("[b]You:[/b] ").strip()
+                    else console.input(user_prompt_suffix).strip()
                 )
                 start = False
                 if not user_input:
                     break
 
-                console.print(f"[b]{character}[/b]: ", end="", style=ai_text_color)
+                console.print(agent_prompt_suffix, end="", style=ai_text_color)
                 for chunk in sess.stream(user_input):
                     console.print(chunk["delta"], end="", style=ai_text_color)
             except KeyboardInterrupt:
