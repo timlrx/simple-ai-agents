@@ -80,7 +80,7 @@ aichat --prime
 Uses a local instance of the mistral model from [ollama][ollama] to summarize the README file.
 
 ```sh
-aichat --model=ollama/mistral "Summarize this file:\n $(cat README.md)"
+cat README.md | aichat --model ollama/mistral "Summarize this file"
 ```
 
 Looking for an option that is not available? Open an issue or submit a PR!
