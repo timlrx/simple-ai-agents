@@ -12,6 +12,7 @@ from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions
 litellm.telemetry = False
 litellm.add_function_to_prompt = True  # add function to prompt for non openai models
 litellm.drop_params = True  # drop params if unsupported by provider
+litellm.suppress_debug_info = True
 
 T = TypeVar("T", bound=BaseModel)
 

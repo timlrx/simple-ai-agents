@@ -1,3 +1,5 @@
+import sys
+
 import click
 from dotenv import load_dotenv
 
@@ -11,18 +13,38 @@ load_dotenv()
 @click.option("--character", default=None, help="Specify the character")
 @click.option("--prime/--no-prime", default=False, help="Enable priming")
 @click.option(
+    "-m",
     "--model",
     default="gpt-3.5-turbo",
     help="""Specify the LLM model e.g. gpt-3.5-turbo, ollama/mistral.
     Uses gpt-3.5-turbo by default.""",
 )
 @click.option("--temperature", default=0.7, help="LLM temperature. Default is 0.7.")
-def interactive_chat(character, prime, model, temperature):
+@click.option("-s", "--system", default=SYSTEM_PROMPT, help="System prompt")
+@click.argument("prompt", required=False)
+def interactive_chat(character, prime, model, temperature, system, prompt):
+    def read_prompt():
+        """Read prompt from stdin if available"""
+        nonlocal prompt
+        stdin_prompt = None
+        if not sys.stdin.isatty():
+            stdin_prompt = click.get_text_stream("stdin").read().strip()
+        if stdin_prompt:
+            bits = [stdin_prompt]
+            if prompt:
+                bits.append(prompt)
+            prompt = " ".join(bits)
+            # https://stackoverflow.com/questions/46129898/conflict-between-sys-stdin-and-input-eoferror-eof-when-reading-a-line
+            sys.stdin = open("/dev/tty")
+        return prompt
+
+    prompt = read_prompt()
     ChatAgent(
         character=character,
         prime=prime,
         console=True,
-        system=SYSTEM_PROMPT,
+        system=system,
+        prompt=prompt,
         llm_options={"model": model, "temperature": temperature},
     )
 
