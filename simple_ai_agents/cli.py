@@ -21,8 +21,13 @@ load_dotenv()
 )
 @click.option("--temperature", default=0.7, help="LLM temperature. Default is 0.7.")
 @click.option("-s", "--system", default=SYSTEM_PROMPT, help="System prompt")
+@click.option(
+    "--display-names/--no-display-names", default=False, help="Display character names"
+)
 @click.argument("prompt", required=False)
-def interactive_chat(character, prime, model, temperature, system, prompt):
+def interactive_chat(
+    character, prime, model, temperature, system, display_names, prompt
+):
     def read_prompt():
         """Read prompt from stdin if available"""
         nonlocal prompt
@@ -45,6 +50,7 @@ def interactive_chat(character, prime, model, temperature, system, prompt):
         console=True,
         system=system,
         prompt=prompt,
+        display_names=display_names,
         llm_options={"model": model, "temperature": temperature},
     )
 
