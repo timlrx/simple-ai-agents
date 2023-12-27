@@ -91,6 +91,7 @@ Looking for an option that is not available? Open an issue or submit a PR!
 - [Multiple chatbot sessions](examples/chatbot_session.py)
 - [Multi-agent conversation with different models](examples/multiple_agents.py)
 - [Structured responses](examples/structured_responses.py)
+- [LLM as Judge](examples/llm_judge.py)
 
 ## Development
 
