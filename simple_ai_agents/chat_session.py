@@ -148,7 +148,9 @@ class ChatLLMSession(ChatSession):
             system=system,
             llm_options=llm_options,
         )
-        response = completion(model=model, messages=history, **kwargs)  # type: ignore
+        response: ModelResponse = completion(
+            model=model, messages=history, **kwargs
+        )  # type: ignore
         try:
             content: str = response.choices[0]["message"]["content"]
             assistant_message = ChatMessage(
@@ -333,7 +335,9 @@ class ChatLLMSession(ChatSession):
         while retries <= validation_retries:
             # Excepts ValidationError, and JSONDecodeError
             try:
-                response = completion(model=model, messages=history, **kwargs)  # type: ignore
+                response: ModelResponse = completion(
+                    model=model, messages=history, **kwargs  # type: ignore
+                )
                 model: Type[T] = process_json_response(
                     response,
                     response_model=response_model,
