@@ -1,20 +1,32 @@
 from json import JSONDecodeError
-from typing import Any, AsyncGenerator, Generator, Optional, Type, TypeVar
+from typing import (
+    Any,
+    AsyncGenerator,
+    Generator,
+    Literal,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import litellm
+from instructor import OpenAISchema
 from instructor.function_calls import Mode
-from instructor.patch import handle_response_model, process_response
+from instructor.patch import handle_response_model
 from litellm import ModelResponse, acompletion, completion
+from litellm.utils import get_llm_provider
 from pydantic import BaseModel, ValidationError
 
 from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions
+from simple_ai_agents.utils import getJSONMode, process_json_response
 
 litellm.telemetry = False
-litellm.add_function_to_prompt = True  # add function to prompt for non openai models
+litellm.add_function_to_prompt = False  # add function to prompt for non openai models
 litellm.drop_params = True  # drop params if unsupported by provider
 litellm.suppress_debug_info = True
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=OpenAISchema)
 
 
 class ChatLLMSession(ChatSession):
@@ -32,7 +44,9 @@ class ChatLLMSession(ChatSession):
         dict[str, Any],
         list[dict[str, Any]],
         ChatMessage,
+        Optional[str],
         Optional[Type[BaseModel]],
+        Optional[Union[Mode, Literal["text"]]],
     ]:
         """
         Prepare a request to send to liteLLM.
@@ -48,8 +62,9 @@ class ChatLLMSession(ChatSession):
                 Defaults to None.
 
         Returns:
-            Tuple: (model, kwargs, history, user_message, response_model)
+            Tuple: (model, kwargs, history, user_message, llm_provider, response_model, mode)
         """
+        mode = "text"
         # Just use user prompt, no system prompt required
         if response_model:
             history = [
@@ -78,18 +93,36 @@ class ChatLLMSession(ChatSession):
         else:
             raise ValueError("No LLM options provided.")
 
-        model = litellm_options.get("model")
+        model = litellm_options.get("model") or ""
+        _, custom_llm_provider, _, _ = get_llm_provider(model)
         if not model:
             raise ValueError("No LLM model provided.")
         kwargs = {k: v for k, v in litellm_options.items() if k != "model"}
 
         if response_model:
+            mode = getJSONMode(custom_llm_provider)
+            kwargs["messages"] = history  # handle_response_model will add messages
+            # TODO: Temp work around instructor bug
+            # two copies of the system msg is inserted when no system msg is provided
+            if mode == Mode.JSON:
+                kwargs["messages"].insert(0, {"role": "system", "content": ""})
             response_model, fn_kwargs = handle_response_model(
-                response_model=response_model, kwargs=kwargs, mode=Mode.FUNCTIONS
+                response_model=response_model, kwargs=kwargs, mode=mode
             )
+            if mode == Mode.JSON:
+                history = fn_kwargs["messages"]
             # Add functions and function_call to kwargs
             kwargs.update(fn_kwargs)
-        return model, kwargs, history, user_message, response_model
+            del kwargs["messages"]
+        return (
+            model,
+            kwargs,
+            history,
+            user_message,
+            custom_llm_provider,
+            response_model,
+            mode,
+        )
 
     def gen(
         self,
@@ -110,7 +143,7 @@ class ChatLLMSession(ChatSession):
                 See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
                 Defaults to None.
         """
-        model, kwargs, history, user_message, _ = self.prepare_request(
+        model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
             prompt,
             system=system,
             llm_options=llm_options,
@@ -154,7 +187,7 @@ class ChatLLMSession(ChatSession):
                 See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
                 Defaults to None.
         """
-        model, kwargs, history, user_message, _ = self.prepare_request(
+        model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
         response: ModelResponse = await acompletion(
@@ -212,27 +245,31 @@ class ChatLLMSession(ChatSession):
             kwargs,
             history,
             user_message,
+            llm_provider,
             response_model,
+            response_mode,
         ) = self.prepare_request(
             prompt,
             system=system,
             response_model=response_model,
             llm_options=llm_options,
         )  # type: ignore
+        response_mode: Literal[Mode.MD_JSON, Mode.FUNCTIONS]
         retries = 0
         while retries <= validation_retries:
             # Excepts ValidationError, and JSONDecodeError
             try:
                 response: ModelResponse = await acompletion(
                     model=model, messages=history, **kwargs
-                )  # type: ignore
-                model: Type[T] = process_response(
+                )
+                model: Type[T] = process_json_response(
                     response,
                     response_model=response_model,
+                    llm_provider=llm_provider,
                     stream=False,
                     strict=strict,
-                    mode=Mode.FUNCTIONS,
-                )  # type: ignore
+                    mode=response_mode,
+                )
                 self.total_prompt_length += response["usage"]["prompt_tokens"]
                 self.total_completion_length += response["usage"]["completion_tokens"]
                 self.total_length += response["usage"]["total_tokens"]
@@ -282,25 +319,29 @@ class ChatLLMSession(ChatSession):
             kwargs,
             history,
             user_message,
+            llm_provider,
             response_model,
+            response_mode,
         ) = self.prepare_request(
             prompt,
             system=system,
             response_model=response_model,
             llm_options=llm_options,
         )  # type: ignore
+        response_mode: Literal[Mode.JSON, Mode.FUNCTIONS]
         retries = 0
         while retries <= validation_retries:
             # Excepts ValidationError, and JSONDecodeError
             try:
                 response = completion(model=model, messages=history, **kwargs)  # type: ignore
-                model: Type[T] = process_response(
+                model: Type[T] = process_json_response(
                     response,
                     response_model=response_model,
+                    llm_provider=llm_provider,
                     stream=False,
                     strict=strict,
-                    mode=Mode.FUNCTIONS,
-                )  # type: ignore
+                    mode=response_mode,
+                )
                 self.total_prompt_length += response["usage"]["prompt_tokens"]
                 self.total_completion_length += response["usage"]["completion_tokens"]
                 self.total_length += response["usage"]["total_tokens"]
@@ -342,7 +383,7 @@ class ChatLLMSession(ChatSession):
         Yields:
             Generator[dict[str, str], None, None]
         """
-        model, kwargs, history, user_message, _ = self.prepare_request(
+        model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
 
@@ -387,7 +428,7 @@ class ChatLLMSession(ChatSession):
         Yields:
             AsyncGenerator[dict[str, str], None]
         """
-        model, kwargs, history, user_message, _ = self.prepare_request(
+        model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
 

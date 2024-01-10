@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Literal, Optional, Set, Union
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -30,6 +30,8 @@ class LLMOptions(TypedDict, total=False):
     api_version: str
     api_key: str
     model_list: list
+    # For ollama only, see: https://docs.litellm.ai/docs/providers/ollama#example-usage---json-mode
+    format: Literal["json"]
 
 
 class ChatMessage(BaseModel):
