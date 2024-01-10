@@ -32,7 +32,7 @@ def test_prepare_request():
     assert llm_provider == "openai"
 
 
-def test_prepare_model_request():
+def test_prepare_model_request_openai():
     sess = ChatLLMSession()
     prompt = "Parse this input"
 
@@ -55,6 +55,33 @@ def test_prepare_model_request():
     assert user_message.role == "user"
     assert user_message.content == prompt
     assert llm_provider == "openai"
+    assert response_model.__name__ == "UserDetail"  # type: ignore
+
+
+def test_prepare_model_request_ollama():
+    sess = ChatLLMSession()
+    prompt = "Parse this input"
+
+    llm_options: LLMOptions = {"model": "ollama/mistral", "temperature": 0.5}
+    (
+        model,
+        kwargs,
+        history,
+        user_message,
+        llm_provider,
+        response_model,
+        mode,
+    ) = sess.prepare_request(prompt, llm_options=llm_options, response_model=UserDetail)
+    assert model == "ollama/mistral"
+    assert "temperature" in kwargs
+    assert "tool_choice" not in kwargs
+    assert "format" in kwargs
+    assert kwargs["format"] == "json"
+    assert history[0]["role"] == "system"
+    assert "json_schema" in history[0]["content"]
+    assert user_message.role == "user"
+    assert user_message.content == prompt
+    assert llm_provider == "ollama"
     assert response_model.__name__ == "UserDetail"  # type: ignore
 
 
