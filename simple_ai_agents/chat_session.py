@@ -45,7 +45,7 @@ class ChatLLMSession(ChatSession):
         list[dict[str, Any]],
         ChatMessage,
         Optional[str],
-        Optional[Type[BaseModel]],
+        Optional[Type[OpenAISchema]],
         Optional[Union[Mode, Literal["text"]]],
     ]:
         """
@@ -106,6 +106,9 @@ class ChatLLMSession(ChatSession):
             # two copies of the system msg is inserted when no system msg is provided
             if mode == Mode.JSON:
                 kwargs["messages"].insert(0, {"role": "system", "content": ""})
+            # https://docs.litellm.ai/docs/providers/ollama#example-usage---json-mode
+            if custom_llm_provider in {"ollama", "ollama_chat"}:
+                kwargs["format"] = "json"
             response_model, fn_kwargs = handle_response_model(
                 response_model=response_model, kwargs=kwargs, mode=mode
             )
@@ -120,7 +123,7 @@ class ChatLLMSession(ChatSession):
             history,
             user_message,
             custom_llm_provider,
-            response_model,
+            response_model,  # type: ignore
             mode,
         )
 
@@ -217,7 +220,7 @@ class ChatLLMSession(ChatSession):
     async def gen_model_async(
         self,
         prompt: str,
-        response_model: Type[T],
+        response_model: Type[BaseModel],
         system: Optional[str] = None,
         llm_options: Optional[LLMOptions] = None,
         validation_retries: int = 1,
@@ -248,7 +251,7 @@ class ChatLLMSession(ChatSession):
             history,
             user_message,
             llm_provider,
-            response_model,
+            response_model_processed,
             response_mode,
         ) = self.prepare_request(
             prompt,
@@ -256,6 +259,7 @@ class ChatLLMSession(ChatSession):
             response_model=response_model,
             llm_options=llm_options,
         )  # type: ignore
+        response_model_processed: Type[T]
         response_mode: Literal[Mode.MD_JSON, Mode.FUNCTIONS]
         retries = 0
         while retries <= validation_retries:
@@ -266,7 +270,7 @@ class ChatLLMSession(ChatSession):
                 )
                 model: Type[T] = process_json_response(
                     response,
-                    response_model=response_model,
+                    response_model=response_model_processed,
                     llm_provider=llm_provider,
                     stream=False,
                     strict=strict,
@@ -291,7 +295,7 @@ class ChatLLMSession(ChatSession):
     def gen_model(
         self,
         prompt: str,
-        response_model: Type[T],
+        response_model: Type[BaseModel],
         system: Optional[str] = None,
         llm_options: Optional[LLMOptions] = None,
         validation_retries: int = 1,
@@ -322,7 +326,7 @@ class ChatLLMSession(ChatSession):
             history,
             user_message,
             llm_provider,
-            response_model,
+            response_model_processed,
             response_mode,
         ) = self.prepare_request(
             prompt,
@@ -330,6 +334,7 @@ class ChatLLMSession(ChatSession):
             response_model=response_model,
             llm_options=llm_options,
         )  # type: ignore
+        response_model_processed: Type[T]
         response_mode: Literal[Mode.JSON, Mode.FUNCTIONS]
         retries = 0
         while retries <= validation_retries:
@@ -340,7 +345,7 @@ class ChatLLMSession(ChatSession):
                 )
                 model: Type[T] = process_json_response(
                     response,
-                    response_model=response_model,
+                    response_model=response_model_processed,
                     llm_provider=llm_provider,
                     stream=False,
                     strict=strict,

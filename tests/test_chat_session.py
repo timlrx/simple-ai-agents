@@ -17,11 +17,11 @@ def test_prepare_request():
     sess = ChatLLMSession()
     prompt = "Hello, how can I help you?"
     system = "Test system"
-    llm_options: LLMOptions = {"model": "test-model", "temperature": 0.5}
-    model, kwargs, history, user_message, _ = sess.prepare_request(
+    llm_options: LLMOptions = {"model": "openai/gpt-3.5", "temperature": 0.5}
+    model, kwargs, history, user_message, llm_provider, _, _ = sess.prepare_request(
         prompt, system=system, llm_options=llm_options
     )
-    assert model == "test-model"
+    assert model == "openai/gpt-3.5"
     assert kwargs == {"temperature": 0.5}
     assert history == [
         {"role": "system", "content": system},
@@ -29,25 +29,32 @@ def test_prepare_request():
     ]
     assert user_message.role == "user"
     assert user_message.content == prompt
+    assert llm_provider == "openai"
 
 
 def test_prepare_model_request():
     sess = ChatLLMSession()
     prompt = "Parse this input"
 
-    llm_options: LLMOptions = {"model": "test-model", "temperature": 0.5}
-    model, kwargs, history, user_message, response_model = sess.prepare_request(
-        prompt, llm_options=llm_options, response_model=UserDetail
-    )
-    assert model == "test-model"
+    llm_options: LLMOptions = {"model": "openai/gpt-3.5", "temperature": 0.5}
+    (
+        model,
+        kwargs,
+        history,
+        user_message,
+        llm_provider,
+        response_model,
+        mode,
+    ) = sess.prepare_request(prompt, llm_options=llm_options, response_model=UserDetail)
+    assert model == "openai/gpt-3.5"
     assert "temperature" in kwargs
-    assert "functions" in kwargs
-    assert "function_call" in kwargs
+    assert "tool_choice" in kwargs
     assert history == [
         {"role": "user", "content": prompt},
     ]
     assert user_message.role == "user"
     assert user_message.content == prompt
+    assert llm_provider == "openai"
     assert response_model.__name__ == "UserDetail"  # type: ignore
 
 

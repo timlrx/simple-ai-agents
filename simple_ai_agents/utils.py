@@ -18,7 +18,7 @@ def getJSONMode(llm_provider: Optional[str]) -> Mode:
 
 def process_json_response(
     response,
-    response_model: Type[OpenAISchema],
+    response_model: Type[T],
     llm_provider: Optional[str],
     stream: bool,
     strict: Optional[bool] = None,
