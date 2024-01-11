@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from rich import print
 
 from simple_ai_agents.chat_agent import ChatAgent
 from simple_ai_agents.models import LLMOptions
@@ -12,6 +11,10 @@ mistral: LLMOptions = {
     "model": "ollama/mistral",
     "temperature": 0.7,
     "api_base": "http://localhost:11434",
+}
+anyscale: LLMOptions = {
+    "model": "anyscale/mistralai/Mistral-7B-Instruct-v0.1",
+    "temperature": 0.7,
 }
 
 
@@ -42,9 +45,8 @@ def gen_recipe(recipe_name: str):
         system="You are an Italian chef", llm_options=mistral, character="Chef"
     )
     recipe = chatbot.gen_model(
-        f"Generate a {recipe_name} recipe", response_model=Recipe, llm_options=openai
+        f"Generate a {recipe_name} recipe", response_model=Recipe, llm_options=anyscale
     )
-    print(recipe)
     chatbot(
         f"Provide some helpful tips to cook this dish:\n {recipe}",
         console_output=True,

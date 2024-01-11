@@ -7,11 +7,16 @@ from instructor.patch import process_response
 T = TypeVar("T", bound=OpenAISchema)
 
 
-def getJSONMode(llm_provider: Optional[str]) -> Mode:
+def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
     if llm_provider == "openai" or llm_provider == "azure":
         return Mode.TOOLS
     elif llm_provider == "ollama" or llm_provider == "ollama_chat":
         return Mode.JSON
+    elif llm_provider == "anyscale" and model.replace("anyscale/", "") in [
+        "mistralai/Mistral-7B-Instruct-v0.1",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    ]:
+        return Mode.JSON_SCHEMA
     else:
         raise Exception(f"{llm_provider} does not have support for any JSON mode.")
 
