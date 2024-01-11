@@ -279,8 +279,11 @@ class ChatLLMSession(ChatSession):
                 self.total_prompt_length += response["usage"]["prompt_tokens"]
                 self.total_completion_length += response["usage"]["completion_tokens"]
                 self.total_length += response["usage"]["total_tokens"]
+                return model
             except (ValidationError, JSONDecodeError) as e:
-                history.append(response.choices[0].message.model_dump())  # type: ignore
+                tool_call = response.choices[0].message.tool_calls[0]  # type: ignore
+                incorrect_json = tool_call.function.arguments
+                history.append({"role": "system", "content": incorrect_json})
                 history.append(
                     {
                         "role": "user",
@@ -290,7 +293,6 @@ class ChatLLMSession(ChatSession):
                 retries += 1
                 if retries > validation_retries:
                     raise e
-            return model
 
     def gen_model(
         self,
@@ -354,8 +356,11 @@ class ChatLLMSession(ChatSession):
                 self.total_prompt_length += response["usage"]["prompt_tokens"]
                 self.total_completion_length += response["usage"]["completion_tokens"]
                 self.total_length += response["usage"]["total_tokens"]
+                return model
             except (ValidationError, JSONDecodeError) as e:
-                history.append(response.choices[0].message.model_dump())  # type: ignore
+                tool_call = response.choices[0].message.tool_calls[0]  # type: ignore
+                incorrect_json = tool_call.function.arguments
+                history.append({"role": "system", "content": incorrect_json})
                 history.append(
                     {
                         "role": "user",
@@ -365,7 +370,6 @@ class ChatLLMSession(ChatSession):
                 retries += 1
                 if retries > validation_retries:
                     raise e
-            return model
 
     def stream(
         self,
