@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Type, TypeVar
 
 from instructor import OpenAISchema
@@ -18,7 +19,10 @@ def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
     ]:
         return Mode.JSON_SCHEMA
     else:
-        raise Exception(f"{llm_provider} does not have support for any JSON mode.")
+        logging.warning(
+            f"{llm_provider} does not have support for any JSON mode. Defaulting to MD_JSON."
+        )
+        return Mode.MD_JSON
 
 
 def process_json_response(

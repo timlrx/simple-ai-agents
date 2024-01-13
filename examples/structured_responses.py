@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+from rich import print
 
 from simple_ai_agents.chat_agent import ChatAgent
 from simple_ai_agents.models import LLMOptions
@@ -9,6 +10,10 @@ load_dotenv()
 openai: LLMOptions = {"model": "gpt-3.5-turbo", "temperature": 0.7}
 anyscale: LLMOptions = {
     "model": "anyscale/mistralai/Mistral-7B-Instruct-v0.1",
+    "temperature": 0.7,
+}
+together: LLMOptions = {
+    "model": "together_ai/togethercomputer/llama-2-70b",
     "temperature": 0.7,
 }
 mistral: LLMOptions = {
@@ -47,8 +52,9 @@ def gen_recipe(recipe_name: str):
     # openai and anyscale seems to do a good job over here,
     # but local mistral fails to generate the correct schema
     recipe = chatbot.gen_model(
-        f"Generate a {recipe_name} recipe", response_model=Recipe, llm_options=openai
+        f"Generate a {recipe_name} recipe", response_model=Recipe, llm_options=together
     )
+    print(recipe)
     chatbot(
         f"Provide some helpful tips to cook this dish:\n {recipe}",
         console_output=True,

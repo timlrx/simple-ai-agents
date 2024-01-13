@@ -12,6 +12,10 @@ anyscale: LLMOptions = {
     "model": "anyscale/mistralai/Mistral-7B-Instruct-v0.1",
     "temperature": 0.7,
 }
+together: LLMOptions = {
+    "model": "together_ai/togethercomputer/CodeLlama-34b",
+    "temperature": 0.7,
+}
 mistral: LLMOptions = {
     "model": "ollama/mistral",
     "temperature": 0.7,
@@ -25,11 +29,10 @@ class Person(BaseModel):
 
 
 def parse(text):
-    chatbot = ChatAgent(llm_options=mistral)
+    chatbot = ChatAgent(llm_options=anyscale)
     parsed = chatbot.gen_model(
         text,
         response_model=Person,
-        llm_options=anyscale,
     )
     print(parsed)
     return parsed

@@ -260,7 +260,7 @@ class ChatLLMSession(ChatSession):
             llm_options=llm_options,
         )  # type: ignore
         response_model_processed: Type[T]
-        response_mode: Literal[Mode.MD_JSON, Mode.FUNCTIONS]
+        response_mode: Mode
         retries = 0
         while retries <= validation_retries:
             # Excepts ValidationError, and JSONDecodeError
@@ -281,15 +281,21 @@ class ChatLLMSession(ChatSession):
                 self.total_length += response["usage"]["total_tokens"]
                 return model
             except (ValidationError, JSONDecodeError) as e:
-                tool_call = response.choices[0].message.tool_calls[0]  # type: ignore
-                incorrect_json = tool_call.function.arguments
-                history.append({"role": "system", "content": incorrect_json})
-                history.append(
-                    {
-                        "role": "user",
-                        "content": f"Recall the function correctly, exceptions found\n{e}",
-                    }
-                )
+                if (
+                    response_mode == Mode.TOOLS
+                    or llm_provider == "ollama"
+                    or llm_provider == "ollama_chat"
+                ):
+                    tool_call = response.choices[0].message.tool_calls[0]  # type: ignore
+                    incorrect_json = tool_call.function.arguments
+                    history.append({"role": "assistant", "content": incorrect_json})
+                    history.append(
+                        {
+                            "role": "user",
+                            "content": f"Recall the function correctly, exceptions found\n{e}",
+                        }
+                    )
+                # For md_json, fresh retry work better - incorrect json is typically quite mangled
                 retries += 1
                 if retries > validation_retries:
                     raise e
@@ -337,7 +343,7 @@ class ChatLLMSession(ChatSession):
             llm_options=llm_options,
         )  # type: ignore
         response_model_processed: Type[T]
-        response_mode: Literal[Mode.JSON, Mode.FUNCTIONS]
+        response_mode: Mode
         retries = 0
         while retries <= validation_retries:
             # Excepts ValidationError, and JSONDecodeError
@@ -358,15 +364,21 @@ class ChatLLMSession(ChatSession):
                 self.total_length += response["usage"]["total_tokens"]
                 return model
             except (ValidationError, JSONDecodeError) as e:
-                tool_call = response.choices[0].message.tool_calls[0]  # type: ignore
-                incorrect_json = tool_call.function.arguments
-                history.append({"role": "system", "content": incorrect_json})
-                history.append(
-                    {
-                        "role": "user",
-                        "content": f"Recall the function correctly, exceptions found\n{e}",
-                    }
-                )
+                if (
+                    response_mode == Mode.TOOLS
+                    or llm_provider == "ollama"
+                    or llm_provider == "ollama_chat"
+                ):
+                    tool_call = response.choices[0].message.tool_calls[0]  # type: ignore
+                    incorrect_json = tool_call.function.arguments
+                    history.append({"role": "assistant", "content": incorrect_json})
+                    history.append(
+                        {
+                            "role": "user",
+                            "content": f"Recall the function correctly, exceptions found\n{e}",
+                        }
+                    )
+                # For md_json, fresh retry work better - incorrect json is typically quite mangled
                 retries += 1
                 if retries > validation_retries:
                     raise e
