@@ -10,7 +10,7 @@ __Note__: The package is in active development and the API is subject to change.
 
 - Mix and match LLM providers ([OpenAI, Huggingface, Ollama, Anthropic and more!][litellm]).
 - Create and run chats with only a few lines of code!
-- Integrates with [instructor][instructor] to provide structured responses.
+- Integrates with [instructor][instructor] to provide structured responses for almost all models.
 - Run multiple independent chats at once or create [Autogen][autogen] like multi-agent conversations.
 - Minimal codebase: no code dives to figure out what's going on under the hood needed!
 - Async and streaming.
@@ -85,6 +85,33 @@ cat README.md | aichat --model ollama/mistral "Summarize this file"
 
 Looking for an option that is not available? Open an issue or submit a PR!
 
+### Structured responses
+
+To generate a structured response, use the `gen_model` method:
+
+```py
+class Person(BaseModel):
+    name: str = Field(description="Name of the person")
+    age: int = Field(description="Age of the person")
+
+chatbot = ChatAgent(llm_options=openai)
+parsed = chatbot.gen_model(
+    "Extract `My name is John and I am 18 years old` into JSON",
+    response_model=Person
+)
+```
+
+The package automatically selects the best mode to generate JSON for a given provider and model:
+
+| Provider | Mode        | JSON Structure | Quality of Output |
+| -------- | ----------- | -------------- | ----------------- |
+| Open AI  | Tools       | Excellent      | Excellent         |
+| Anyscale | JSON Schema | Excellent      | Very good         |
+| Ollama   | JSON        | Excellent      | Varies by model   |
+| Others   | MD_JSON     | Acceptable     | Varies by model   |
+
+Currently, [Open AI][openai tools] and [Anyscale][anyscale function calling] are the only two providers with a structured response mode. [Ollama][ollama json] also supports json response but the quality of the output is dependent on the model used (and probably whether it has been fine-tuned for json generation). For other providers, the package uses the `MD_JSON` mode which is a markdown representation of the JSON structure.
+
 ### Examples
 
 - [Basic chatbot session](examples/sessions.py)
@@ -140,3 +167,6 @@ poetry run pytest
 [instructor]: https://github.com/jxnl/instructor
 [autogen]: https://github.com/microsoft/autogen
 [ollama]: https://ollama.ai/
+[openai tools]: https://platform.openai.com/docs/assistants/tools
+[anyscale function calling]: https://docs.endpoints.anyscale.com/guides/function-calling/
+[ollama json]: https://github.com/jmorganca/ollama/blob/main/docs/api.md#json-mode
