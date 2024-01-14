@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "simple-ai-agents"
-version = "0.2.2"
+version = "0.3.0"
 description = ""
 authors = ["Timothy Lin <timothy0336@hotmail.com>"]
 readme = "README.md"
