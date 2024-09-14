@@ -3,13 +3,31 @@ from typing import Optional, Type, TypeVar
 
 from instructor import OpenAISchema
 from instructor.function_calls import Mode
-from instructor.patch import process_response
+from instructor.process_response import process_response
 
 T = TypeVar("T", bound=OpenAISchema)
+
+# Taken from https://ollama.com/search?c=tools
+ollama_tool_models = [
+    "ollama/llama3.1",
+    "ollama/mistral-nemo",
+    "ollama/mistral-large",
+    "ollama/qwen2",
+    "ollama/mistral",
+    "ollama/mixtral",
+    "ollama/command-r",
+    "ollama/command-r-plus",
+    "ollama/hermes3",
+    "ollama/llama3-groq-tool-use",
+]
 
 
 def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
     if llm_provider == "openai" or llm_provider == "azure":
+        return Mode.TOOLS
+    elif (
+        llm_provider == "ollama" or llm_provider == "ollama_chat"
+    ) and model in ollama_tool_models:
         return Mode.TOOLS
     elif llm_provider == "ollama" or llm_provider == "ollama_chat":
         return Mode.JSON

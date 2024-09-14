@@ -102,15 +102,8 @@ class ChatLLMSession(ChatSession):
         if response_model:
             mode = getJSONMode(custom_llm_provider, model)
             kwargs["messages"] = history  # handle_response_model will add messages
-            # TODO: Temp work around instructor bug
-            # two copies of the system msg is inserted when no system msg is provided
-            if mode in {Mode.JSON, Mode.JSON_SCHEMA, Mode.MD_JSON}:
-                kwargs["messages"].insert(0, {"role": "system", "content": ""})
-            # https://docs.litellm.ai/docs/providers/ollama#example-usage---json-mode
-            if custom_llm_provider in {"ollama", "ollama_chat"}:
-                kwargs["format"] = "json"
             response_model, fn_kwargs = handle_response_model(
-                response_model=response_model, kwargs=kwargs, mode=mode
+                response_model=response_model, mode=mode, **kwargs
             )
             if mode in {Mode.JSON, Mode.JSON_SCHEMA, Mode.MD_JSON}:
                 history = fn_kwargs["messages"]

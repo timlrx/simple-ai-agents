@@ -74,11 +74,7 @@ def test_prepare_model_request_ollama():
     ) = sess.prepare_request(prompt, llm_options=llm_options, response_model=UserDetail)
     assert model == "ollama/mistral"
     assert "temperature" in kwargs
-    assert "tool_choice" not in kwargs
-    assert "format" in kwargs
-    assert kwargs["format"] == "json"
-    assert history[0]["role"] == "system"
-    assert "json_schema" in history[0]["content"]
+    assert "tool_choice" in kwargs
     assert user_message.role == "user"
     assert user_message.content == prompt
     assert llm_provider == "ollama"
