@@ -1,14 +1,5 @@
 from json import JSONDecodeError
-from typing import (
-    Any,
-    AsyncGenerator,
-    Generator,
-    Literal,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, AsyncGenerator, Generator, Literal, Optional, TypeVar, Union
 
 import litellm
 from instructor import OpenAISchema
@@ -26,7 +17,7 @@ litellm.add_function_to_prompt = False  # add function to prompt for non openai 
 litellm.drop_params = True  # drop params if unsupported by provider
 litellm.suppress_debug_info = True
 
-T = TypeVar("T", bound=OpenAISchema)
+T_Model = TypeVar("T_Model", bound=BaseModel)
 
 
 class ChatLLMSession(ChatSession):
@@ -37,7 +28,7 @@ class ChatLLMSession(ChatSession):
         self,
         prompt: str,
         system: Optional[str] = None,
-        response_model: Optional[Type[BaseModel]] = None,
+        response_model: Optional[type[BaseModel]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> tuple[
         str,
@@ -45,7 +36,7 @@ class ChatLLMSession(ChatSession):
         list[dict[str, Any]],
         ChatMessage,
         Optional[str],
-        Optional[Type[OpenAISchema]],
+        Optional[type[OpenAISchema]],
         Optional[Union[Mode, Literal["text"]]],
     ]:
         """
@@ -213,12 +204,12 @@ class ChatLLMSession(ChatSession):
     async def gen_model_async(
         self,
         prompt: str,
-        response_model: Type[BaseModel],
+        response_model: type[T_Model | OpenAISchema | BaseModel],
         system: Optional[str] = None,
         llm_options: Optional[LLMOptions] = None,
         validation_retries: int = 1,
         strict: Optional[bool] = None,
-    ) -> Type[T]:  # type: ignore
+    ) -> T_Model:  # type: ignore
         """
         Generate a response from the AI and parse it into a response model.
 
@@ -252,18 +243,18 @@ class ChatLLMSession(ChatSession):
             response_model=response_model,
             llm_options=llm_options,
         )  # type: ignore
-        response_model_processed: Type[T]
+        response_model_processed: T_Model
         response_mode: Mode
         retries = 0
         while retries <= validation_retries:
             # Excepts ValidationError, and JSONDecodeError
             try:
                 response: ModelResponse = await acompletion(
-                    model=model, messages=history, **kwargs
+                    model=model, messages=history, **kwargs  # type: ignore
                 )
-                model: Type[T] = process_json_response(
+                model: T_Model = process_json_response(
                     response,
-                    response_model=response_model_processed,
+                    response_model=response_model_processed,  # type: ignore
                     llm_provider=llm_provider,
                     stream=False,
                     strict=strict,
@@ -296,12 +287,12 @@ class ChatLLMSession(ChatSession):
     def gen_model(
         self,
         prompt: str,
-        response_model: Type[BaseModel],
+        response_model: type[T_Model | OpenAISchema | BaseModel],
         system: Optional[str] = None,
         llm_options: Optional[LLMOptions] = None,
         validation_retries: int = 1,
         strict: Optional[bool] = None,
-    ) -> Type[T]:  # type: ignore
+    ) -> T_Model:  # type: ignore
         """
         Generate a response from the AI and parse it into a response model.
 
@@ -335,7 +326,7 @@ class ChatLLMSession(ChatSession):
             response_model=response_model,
             llm_options=llm_options,
         )  # type: ignore
-        response_model_processed: Type[T]
+        response_model_processed: T_Model
         response_mode: Mode
         retries = 0
         while retries <= validation_retries:
@@ -344,9 +335,9 @@ class ChatLLMSession(ChatSession):
                 response: ModelResponse = completion(
                     model=model, messages=history, **kwargs  # type: ignore
                 )
-                model: Type[T] = process_json_response(
+                model: T_Model = process_json_response(
                     response,
-                    response_model=response_model_processed,
+                    response_model=response_model_processed,  # type: ignore
                     llm_provider=llm_provider,
                     stream=False,
                     strict=strict,

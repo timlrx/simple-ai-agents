@@ -1,11 +1,11 @@
 import logging
-from typing import Optional, Type, TypeVar
+from typing import Optional, TypeVar
 
-from instructor import OpenAISchema
 from instructor.function_calls import Mode
 from instructor.process_response import process_response
+from pydantic import BaseModel
 
-T = TypeVar("T", bound=OpenAISchema)
+T_Model = TypeVar("T_Model", bound=BaseModel)
 
 # Taken from https://ollama.com/search?c=tools
 ollama_tool_models = [
@@ -45,12 +45,12 @@ def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
 
 def process_json_response(
     response,
-    response_model: Type[T],
+    response_model: type[T_Model],
     llm_provider: Optional[str],
     stream: bool,
     strict: Optional[bool] = None,
     mode: Mode = Mode.FUNCTIONS,
-) -> Type[T]:
+) -> T_Model:
     """
     Wrapper around instructor process_response to specially handle different response mode.
     If ollama is used with JSON mode, we patch the name and parse it as if it is a function call.
@@ -61,7 +61,7 @@ def process_json_response(
         ):
             message = response.choices[0].message
             tool_call = message.tool_calls[0]
-            tool_call.function.name = response_model.openai_schema["name"]  # Patch name
+            tool_call.function.name = response_model.openai_schema["name"]  # type: ignore
             return process_response(
                 response,
                 response_model=response_model,
