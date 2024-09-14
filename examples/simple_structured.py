@@ -7,7 +7,7 @@ from simple_ai_agents.models import LLMOptions
 
 load_dotenv()
 
-openai: LLMOptions = {"model": "gpt-3.5-turbo", "temperature": 0.7}
+openai: LLMOptions = {"model": "gpt-4o-mini", "temperature": 0.7}
 anthropic: LLMOptions = {
     "model": "claude-3-5-sonnet-20240620",
 }

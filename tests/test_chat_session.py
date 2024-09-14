@@ -17,11 +17,11 @@ def test_prepare_request():
     sess = ChatLLMSession()
     prompt = "Hello, how can I help you?"
     system = "Test system"
-    llm_options: LLMOptions = {"model": "openai/gpt-3.5", "temperature": 0.5}
+    llm_options: LLMOptions = {"model": "openai/gpt-4o-mini", "temperature": 0.5}
     model, kwargs, history, user_message, llm_provider, _, _ = sess.prepare_request(
         prompt, system=system, llm_options=llm_options
     )
-    assert model == "openai/gpt-3.5"
+    assert model == "openai/gpt-4o-mini"
     assert kwargs == {"temperature": 0.5}
     assert history == [
         {"role": "system", "content": system},
@@ -36,7 +36,7 @@ def test_prepare_model_request_openai():
     sess = ChatLLMSession()
     prompt = "Parse this input"
 
-    llm_options: LLMOptions = {"model": "openai/gpt-3.5", "temperature": 0.5}
+    llm_options: LLMOptions = {"model": "openai/gpt-4o-mini", "temperature": 0.5}
     (
         model,
         kwargs,
@@ -46,7 +46,7 @@ def test_prepare_model_request_openai():
         response_model,
         mode,
     ) = sess.prepare_request(prompt, llm_options=llm_options, response_model=UserDetail)
-    assert model == "openai/gpt-3.5"
+    assert model == "openai/gpt-4o-mini"
     assert "temperature" in kwargs
     assert "tool_choice" in kwargs
     assert history == [

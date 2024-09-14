@@ -11,6 +11,7 @@ __Note__: The package is in active development and the API is subject to change.
 - Mix and match LLM providers ([OpenAI, Huggingface, Ollama, Anthropic and more!][litellm]).
 - Create and run chats with only a few lines of code!
 - Integrates with [instructor][instructor] to provide structured responses for almost all models.
+- Supports tool usage in models from Open AI, Azure, Anthropic, Bedrock, Vertex AI and Grok as well as selected Github, Together AI and Ollama models.
 - Run multiple independent chats at once or create [Autogen][autogen] like multi-agent conversations.
 - Minimal codebase: no code dives to figure out what's going on under the hood needed!
 - Async and streaming.
@@ -64,7 +65,7 @@ aichat [OPTIONS] [PROMPT]
 The CLI supports the following options:
 - `--prime`: Prime the chatbot with a prompt before starting the chat.
 - `--character`: The name of the chat agent.
-- `--model`: Specify the LLM model e.g. gpt-3.5-turbo, ollama/mistral etc. Uses gpt-3.5-turbo by default.
+- `--model`: Specify the LLM model e.g. gpt-4o-mini, ollama/mistral etc. Uses gpt-4o-mini by default.
 - `--temperature`: Specify the temperature for the LLM model. Uses 0.7 by default.
 - `--system`: System prompt.
 - `--help`
@@ -101,16 +102,9 @@ parsed = chatbot.gen_model(
 )
 ```
 
-The package automatically selects the best mode to generate JSON for a given provider and model:
+The package automatically selects the best mode to generate JSON for a given provider and model. For the highest quality and reliability of structured responses, choose a model that supports tool usage.
 
-| Provider | Mode        | JSON Structure | Quality of Output |
-| -------- | ----------- | -------------- | ----------------- |
-| Open AI  | Tools       | Excellent      | Excellent         |
-| Anyscale | JSON Schema | Excellent      | Very good         |
-| Ollama   | JSON        | Excellent      | Varies by model   |
-| Others   | MD_JSON     | Acceptable     | Varies by model   |
-
-Currently, [Open AI][openai tools] and [Anyscale][anyscale function calling] are the only two providers with a structured response mode. [Ollama][ollama json] also supports json response but the quality of the output is dependent on the model used (and probably whether it has been fine-tuned for json generation). For other providers, the package uses the `MD_JSON` mode which is a markdown representation of the JSON structure.
+[Tool usage][openai tools] is currently supported in Open AI, Azure, Anthropic, Bedrock, Vertex AI and Grok models. Selected [Ollama models][ollama tools] and [Together AI models][together json] also support structured response generation. For other providers and models, structured response is obtained by parsing the returned message results. This might result in a lower quality and accuracy of the structured response.
 
 ### Examples
 
@@ -170,3 +164,5 @@ poetry run pytest
 [openai tools]: https://platform.openai.com/docs/assistants/tools
 [anyscale function calling]: https://docs.endpoints.anyscale.com/guides/function-calling/
 [ollama json]: https://github.com/jmorganca/ollama/blob/main/docs/api.md#json-mode
+[ollama tools]: https://ollama.com/search?c=tools
+[together json]: https://docs.together.ai/docs/json-mode#supported-models

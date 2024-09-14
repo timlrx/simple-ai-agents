@@ -7,7 +7,7 @@ from simple_ai_agents.models import LLMOptions
 
 load_dotenv()
 
-openai: LLMOptions = {"model": "gpt-3.5-turbo", "temperature": 0.7}
+openai: LLMOptions = {"model": "gpt-4o-mini", "temperature": 0.7}
 anyscale: LLMOptions = {
     "model": "anyscale/mistralai/Mistral-7B-Instruct-v0.1",
     "temperature": 0.7,

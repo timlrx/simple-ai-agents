@@ -25,6 +25,6 @@
     "total_completion_length": 9,
     "total_length": 27,
     "llm_options": {
-        "model": "gpt-3.5-turbo"
+        "model": "gpt-4o-mini"
     }
 }

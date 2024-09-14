@@ -687,14 +687,17 @@ license = ["ukkonen"]
 
 [[package]]
 name = "idna"
-version = "3.8"
+version = "3.9"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "idna-3.8-py3-none-any.whl", hash = "sha256:050b4e5baadcd44d760cedbd2b8e639f2ff89bbc7a5730fcc662954303377aac"},
-    {file = "idna-3.8.tar.gz", hash = "sha256:d838c2c0ed6fced7693d5e8ab8e734d5f8fda53a039c0164afb0b82e771e3603"},
+    {file = "idna-3.9-py3-none-any.whl", hash = "sha256:69297d5da0cc9281c77efffb4e730254dd45943f45bbfb461de5991713989b1e"},
+    {file = "idna-3.9.tar.gz", hash = "sha256:e5c5dafde284f26e9e0f28f6ea2d6400abd5ca099864a67f576f3981c6476124"},
 ]
+
+[package.extras]
+all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
 
 [[package]]
 name = "importlib-metadata"
@@ -732,20 +735,20 @@ files = [
 
 [[package]]
 name = "instructor"
-version = "1.4.1"
+version = "1.4.2"
 description = "structured outputs for llm"
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "instructor-1.4.1-py3-none-any.whl", hash = "sha256:ddc913f302b35eb6d15471c5cd13f4b9a408e042f347c0598c97b3069b1efe73"},
-    {file = "instructor-1.4.1.tar.gz", hash = "sha256:2d28e1157682a079dcbc44169a3300217b8c62773c7a14fecd7bc9dd4ece5794"},
+    {file = "instructor-1.4.2-py3-none-any.whl", hash = "sha256:e3c4791a9346eaa55877dc432024d6cf87d75ed03ab592b4cfc6fb201028af63"},
+    {file = "instructor-1.4.2.tar.gz", hash = "sha256:1568bdbcae40eda8505be0e971da8e4c1c4cad7e419dbfb9756df52bc4f69808"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.9.1,<4.0.0"
 docstring-parser = ">=0.16,<0.17"
 jiter = ">=0.5.0,<0.6.0"
-openai = ">=1.40.0,<2.0.0"
+openai = ">=1.45.0,<2.0.0"
 pydantic = ">=2.8.0,<3.0.0"
 pydantic-core = ">=2.18.0,<3.0.0"
 rich = ">=13.7.0,<14.0.0"
@@ -886,13 +889,13 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "litellm"
-version = "1.44.28"
+version = "1.45.0"
 description = "Library to easily interface with LLM API providers"
 optional = false
 python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 files = [
-    {file = "litellm-1.44.28-py3-none-any.whl", hash = "sha256:a4476c1f076b7996a97bd5d51e53760be482f1ec888c0c626c7877d5c6ff0849"},
-    {file = "litellm-1.44.28.tar.gz", hash = "sha256:9a9055ce3f655201e4527786c219eaa98579c0134c031418bc38744fed3cd265"},
+    {file = "litellm-1.45.0-py3-none-any.whl", hash = "sha256:87d712beabc6cbf24437557186c5b266729f3139bf7dd2e54573e1e9845b905a"},
+    {file = "litellm-1.45.0.tar.gz", hash = "sha256:21285496e72b9b16ff9d3d1332965c3d1a9b0ae8dbb26f27a7080af28a117174"},
 ]
 
 [package.dependencies]
@@ -1190,13 +1193,13 @@ files = [
 
 [[package]]
 name = "platformdirs"
-version = "4.3.2"
+version = "4.3.3"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "platformdirs-4.3.2-py3-none-any.whl", hash = "sha256:eb1c8582560b34ed4ba105009a4badf7f6f85768b30126f351328507b2beb617"},
-    {file = "platformdirs-4.3.2.tar.gz", hash = "sha256:9e5e27a08aa095dd127b9f2e764d74254f482fef22b0970773bfba79d091ab8c"},
+    {file = "platformdirs-4.3.3-py3-none-any.whl", hash = "sha256:50a5450e2e84f44539718293cbb1da0a0885c9d14adf21b77bae4e66fc99d9b5"},
+    {file = "platformdirs-4.3.3.tar.gz", hash = "sha256:d4e0b7d8ec176b341fb03cb11ca12d0276faa8c485f9cd218f613840463fc2c0"},
 ]
 
 [package.extras]
@@ -2231,4 +2234,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "6d2151994577d0d8a80988263921bbde9bb9269ce6f05f5d49f7f1c356049849"
+content-hash = "4c45870652337cb065bf4f9886d525f7751fc873937d5c3831d1d8c6781b8ec5"

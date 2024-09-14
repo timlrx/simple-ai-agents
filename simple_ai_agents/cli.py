@@ -15,9 +15,9 @@ load_dotenv()
 @click.option(
     "-m",
     "--model",
-    default="gpt-3.5-turbo",
-    help="""Specify the LLM model e.g. gpt-3.5-turbo, ollama/mistral.
-    Uses gpt-3.5-turbo by default.""",
+    default="gpt-4o-mini",
+    help="""Specify the LLM model e.g. gpt-4o-mini, ollama/mistral.
+    Uses gpt-4o-mini by default.""",
 )
 @click.option("--temperature", default=0.7, help="LLM temperature. Default is 0.7.")
 @click.option("-s", "--system", default=SYSTEM_PROMPT, help="System prompt")

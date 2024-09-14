@@ -12,8 +12,8 @@ from simple_ai_agents.models import LLMOptions
 
 load_dotenv()
 
-gpt3: LLMOptions = {
-    "model": "gpt-3.5-turbo",
+gpt4o: LLMOptions = {
+    "model": "gpt-4o-mini",
     "temperature": 0.7,
 }
 
@@ -93,7 +93,7 @@ async def comparison(questions):
     Compare the responses from two different models with grading by a GPT-4 judge.
     """
     output = []
-    models = [gpt3, mistral_small, mistral_medium]
+    models = [gpt4o, mistral_small, mistral_medium]
     for data in questions:
         question = data["turns"]
         print(question)
