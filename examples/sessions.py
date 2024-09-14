@@ -10,7 +10,7 @@ load_dotenv()
 # See https://docs.litellm.ai/docs/providers for list of providers
 # See https://docs.litellm.ai/docs/completion/input#input-params-1 for list of options
 # Note: message will be automatically prepared using the input prompt
-openai: LLMOptions = {"model": "gpt-3.5-turbo", "temperature": 0.7}
+openai: LLMOptions = {"model": "gpt-4o-mini", "temperature": 0.7}
 llama: LLMOptions = {
     "model": "huggingface/meta-llama/Llama-2-13b-chat-hf",
     "temperature": 0.5,

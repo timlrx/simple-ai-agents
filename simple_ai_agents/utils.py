@@ -1,15 +1,55 @@
 import logging
-from typing import Optional, Type, TypeVar
+from typing import Optional, TypeVar
 
-from instructor import OpenAISchema
 from instructor.function_calls import Mode
-from instructor.patch import process_response
+from instructor.process_response import process_response
+from pydantic import BaseModel
 
-T = TypeVar("T", bound=OpenAISchema)
+T_Model = TypeVar("T_Model", bound=BaseModel)
+
+# Taken from https://ollama.com/search?c=tools
+ollama_tool_models = [
+    "ollama/llama3.1",
+    "ollama/mistral-nemo",
+    "ollama/mistral-large",
+    "ollama/qwen2",
+    "ollama/mistral",
+    "ollama/mixtral",
+    "ollama/command-r",
+    "ollama/command-r-plus",
+    "ollama/hermes3",
+    "ollama/llama3-groq-tool-use",
+]
+
+# https://docs.together.ai/docs/json-mode#supported-models
+together_ai_tool_models = [
+    "together_ai/meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+    "together_ai/meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+    "together_ai/mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "together_ai/mistralai/Mistral-7B-Instruct-v0.1",
+]
 
 
 def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
-    if llm_provider == "openai" or llm_provider == "azure":
+    # LiteLLM transforms openai tools to anthropic / vertex hence no need for separate mode
+    if llm_provider in [
+        "openai",
+        "azure",
+        "anthropic",
+        "bedrock",
+        "vertex_ai",
+        "groq",
+    ]:
+        return Mode.TOOLS
+    # For together ai, json schema mode is more similar rather than tools
+    elif llm_provider == "together_ai" and model in together_ai_tool_models:
+        return Mode.JSON_SCHEMA
+    # Not able to get the command-r and llama models to work with tools
+    elif llm_provider == "github" and "gpt" in model:
+        return Mode.TOOLS
+    elif (
+        llm_provider == "ollama" or llm_provider == "ollama_chat"
+    ) and model in ollama_tool_models:
         return Mode.TOOLS
     elif llm_provider == "ollama" or llm_provider == "ollama_chat":
         return Mode.JSON
@@ -20,19 +60,19 @@ def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
         return Mode.JSON_SCHEMA
     else:
         logging.warning(
-            f"{llm_provider} does not have support for any JSON mode. Defaulting to MD_JSON."
+            f"{model} does not have support for any JSON mode. Defaulting to MD_JSON."
         )
         return Mode.MD_JSON
 
 
 def process_json_response(
     response,
-    response_model: Type[T],
+    response_model: type[T_Model],
     llm_provider: Optional[str],
     stream: bool,
     strict: Optional[bool] = None,
     mode: Mode = Mode.FUNCTIONS,
-) -> Type[T]:
+) -> T_Model:
     """
     Wrapper around instructor process_response to specially handle different response mode.
     If ollama is used with JSON mode, we patch the name and parse it as if it is a function call.
@@ -43,7 +83,7 @@ def process_json_response(
         ):
             message = response.choices[0].message
             tool_call = message.tool_calls[0]
-            tool_call.function.name = response_model.openai_schema["name"]  # Patch name
+            tool_call.function.name = response_model.openai_schema["name"]  # type: ignore
             return process_response(
                 response,
                 response_model=response_model,
