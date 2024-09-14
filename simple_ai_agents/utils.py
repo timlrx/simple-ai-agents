@@ -21,9 +21,31 @@ ollama_tool_models = [
     "ollama/llama3-groq-tool-use",
 ]
 
+# https://docs.together.ai/docs/json-mode#supported-models
+together_ai_tool_models = [
+    "together_ai/meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+    "together_ai/meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+    "together_ai/mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "together_ai/mistralai/Mistral-7B-Instruct-v0.1",
+]
+
 
 def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
-    if llm_provider == "openai" or llm_provider == "azure":
+    # LiteLLM transforms openai tools to anthropic / vertex hence no need for separate mode
+    if llm_provider in [
+        "openai",
+        "azure",
+        "anthropic",
+        "bedrock",
+        "vertex_ai",
+        "groq",
+    ]:
+        return Mode.TOOLS
+    # For together ai, json schema mode is more similar rather than tools
+    elif llm_provider == "together_ai" and model in together_ai_tool_models:
+        return Mode.JSON_SCHEMA
+    # Not able to get the command-r and llama models to work with tools
+    elif llm_provider == "github" and "gpt" in model:
         return Mode.TOOLS
     elif (
         llm_provider == "ollama" or llm_provider == "ollama_chat"
@@ -38,7 +60,7 @@ def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
         return Mode.JSON_SCHEMA
     else:
         logging.warning(
-            f"{llm_provider} does not have support for any JSON mode. Defaulting to MD_JSON."
+            f"{model} does not have support for any JSON mode. Defaulting to MD_JSON."
         )
         return Mode.MD_JSON
 
