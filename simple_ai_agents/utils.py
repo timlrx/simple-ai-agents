@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, TypeVar
 
-from instructor.function_calls import Mode
+from instructor.mode import Mode
 from instructor.process_response import process_response
 from pydantic import BaseModel
 
