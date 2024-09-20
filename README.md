@@ -113,6 +113,7 @@ The package automatically selects the best mode to generate JSON for a given pro
 - [Multi-agent conversation with different models](examples/multiple_agents.py)
 - [Structured responses](examples/structured_responses.py)
 - [LLM as Judge](examples/llm_judge.py)
+- [Streaming with FastAPI](examples/fastapi_stream.py)
 
 ## Development
 
