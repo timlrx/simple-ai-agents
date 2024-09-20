@@ -3,10 +3,11 @@ from typing import Any, AsyncGenerator, Generator, Literal, Optional, TypeVar, U
 
 import litellm
 from instructor import OpenAISchema
-from instructor.function_calls import Mode
-from instructor.patch import handle_response_model
-from litellm import ModelResponse, acompletion, completion
-from litellm.utils import get_llm_provider
+from instructor.mode import Mode
+from instructor.process_response import handle_response_model
+from litellm import acompletion, completion
+from litellm.files.main import ModelResponse
+from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
 from pydantic import BaseModel, ValidationError
 
 from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions
