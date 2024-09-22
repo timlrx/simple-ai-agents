@@ -35,7 +35,7 @@ class LLMOptions(TypedDict, total=False):
 
 
 class Tool(BaseModel):
-    tool_schema: dict[str, Any]
+    tool_model: dict[str, Any] | type[BaseModel]
     function: Callable
 
 

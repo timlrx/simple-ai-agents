@@ -12,7 +12,11 @@ from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
 from pydantic import BaseModel, ValidationError
 
 from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions, Tool
-from simple_ai_agents.utils import getJSONMode, process_json_response
+from simple_ai_agents.utils import (
+    format_tool_schema,
+    getJSONMode,
+    process_json_response,
+)
 
 litellm.telemetry = False
 litellm.add_function_to_prompt = False  # add function to prompt for non openai models
@@ -143,7 +147,7 @@ class ChatLLMSession(ChatSession):
             system=system,
             llm_options=llm_options,
         )
-        tool_schemas = [tool.tool_schema for tool in tools] if tools else None
+        tools, tool_schemas = format_tool_schema(tools) if tools else (None, None)
         response: ModelResponse = completion(
             model=model,
             messages=history,
@@ -196,7 +200,7 @@ class ChatLLMSession(ChatSession):
         model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
-        tool_schemas = [tool.tool_schema for tool in tools] if tools else None
+        tools, tool_schemas = format_tool_schema(tools) if tools else (None, None)
         response: ModelResponse = await acompletion(
             model=model,
             messages=history,
@@ -502,7 +506,11 @@ class ChatLLMSession(ChatSession):
         """
         response_message = response.choices[0]["message"]
         tool_calls = response_message["tool_calls"]
-        available_functions = {tool.function.__name__: tool.function for tool in tools}
+        # Use tool.tool_model["function"]["name"] instead of too.function.__name__
+        # since returned response is based on schema and there might be a name mismatch
+        available_functions = {
+            tool.tool_model["function"]["name"]: tool.function for tool in tools
+        }
         for tool_call in tool_calls:
             function_name = tool_call["function"]["name"]
             function_args = json.loads(tool_call["function"]["arguments"])
