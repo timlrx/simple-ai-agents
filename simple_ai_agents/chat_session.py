@@ -1,3 +1,4 @@
+import json
 from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Generator, Literal, Optional, TypeVar, Union
 
@@ -10,7 +11,7 @@ from litellm.files.main import ModelResponse
 from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
 from pydantic import BaseModel, ValidationError
 
-from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions
+from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions, Tool
 from simple_ai_agents.utils import getJSONMode, process_json_response
 
 litellm.telemetry = False
@@ -38,7 +39,7 @@ class ChatLLMSession(ChatSession):
         ChatMessage,
         Optional[str],
         Optional[type[OpenAISchema]],
-        Optional[Union[Mode, Literal["text"]]],
+        Optional[Union[Mode, Literal["auto"]]],
     ]:
         """
         Prepare a request to send to liteLLM.
@@ -56,7 +57,7 @@ class ChatLLMSession(ChatSession):
         Returns:
             Tuple: (model, kwargs, history, user_message, llm_provider, response_model, mode)
         """
-        mode = "text"
+        mode = "auto"
         # Just use user prompt, no system prompt required
         if response_model:
             history = [
@@ -117,6 +118,8 @@ class ChatLLMSession(ChatSession):
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> str:
         """
@@ -127,6 +130,10 @@ class ChatLLMSession(ChatSession):
             system (str, optional): System prompt. Defaults to None.
             save_messages (bool, optional): Whether to save the messages.
                 Defaults to None.
+            tools (list[Tool], optional): List of tools available for use by the LLM.
+                Defaults to None.
+            tool_choice (str | dict[str, Any] | None, optional): Tool choice configuration.
+                Defaults to individual providers default behaviour.
             llm_options (LLMOptions, optional): LiteLLM options.
                 See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
                 Defaults to None.
@@ -136,26 +143,29 @@ class ChatLLMSession(ChatSession):
             system=system,
             llm_options=llm_options,
         )
+        tool_schemas = [tool.tool_schema for tool in tools] if tools else None
         response: ModelResponse = completion(
-            model=model, messages=history, **kwargs
+            model=model,
+            messages=history,
+            tools=tool_schemas,
+            tool_choice=tool_choice,
+            **kwargs,
         )  # type: ignore
+
+        # Make a 2nd request if tool calls are present
+        tool_calls = response.choices[0]["message"]["tool_calls"]
+        if tool_calls and tools:
+            tool_history = self._handle_tool_response(response, tools)
+            history.extend(tool_history)
+            response: ModelResponse = completion(
+                model=model,
+                messages=history,
+            )  # type: ignore
         try:
-            content: str = response.choices[0]["message"]["content"]
-            assistant_message = ChatMessage(
-                role="assistant",
-                content=content,
-                finish_reason=response.choices[0]["finish_reason"],
-                prompt_length=response["usage"]["prompt_tokens"],
-                completion_length=response["usage"]["completion_tokens"],
-                total_length=response["usage"]["total_tokens"],
-            )
-            self.add_messages(user_message, assistant_message, save_messages)
-            self.total_prompt_length += response["usage"]["prompt_tokens"]
-            self.total_completion_length += response["usage"]["completion_tokens"]
-            self.total_length += response["usage"]["total_tokens"]
+            content, assistant_message = self._handle_message_response(response)
+            self.add_messages([user_message, assistant_message], save_messages)
         except KeyError:
             raise KeyError(f"No AI generation: {response}")
-
         return content
 
     async def gen_async(
@@ -163,6 +173,8 @@ class ChatLLMSession(ChatSession):
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> str:
         """
@@ -173,6 +185,10 @@ class ChatLLMSession(ChatSession):
             system (str, optional): System prompt. Defaults to None.
             save_messages (bool, optional): Whether to save the messages.
                 Defaults to None.
+            tools (list[Tool], optional): List of tools available for use by the LLM.
+                Defaults to None.
+            tool_choice (str | dict[str, Any] | None, optional): Tool choice configuration.
+                Defaults to individual providers default behaviour.
             llm_options (LLMOptions, optional): LiteLLM options.
                 See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
                 Defaults to None.
@@ -180,23 +196,25 @@ class ChatLLMSession(ChatSession):
         model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
+        tool_schemas = [tool.tool_schema for tool in tools] if tools else None
         response: ModelResponse = await acompletion(
-            model=model, messages=history, **kwargs
+            model=model,
+            messages=history,
+            tools=tool_schemas,
+            tool_choice=tool_choice,  # type: ignore
+            **kwargs,
         )  # type: ignore
+        tool_calls = response.choices[0]["message"]["tool_calls"]
+        if tool_calls and tools:
+            tool_history = self._handle_tool_response(response, tools)
+            history.extend(tool_history)
+            response: ModelResponse = await acompletion(
+                model=model,
+                messages=history,
+            )  # type: ignore
         try:
-            content: str = response.choices[0]["message"]["content"]
-            assistant_message = ChatMessage(
-                role="assistant",
-                content=content,
-                finish_reason=response.choices[0]["finish_reason"],
-                prompt_length=response["usage"]["prompt_tokens"],
-                completion_length=response["usage"]["completion_tokens"],
-                total_length=response["usage"]["total_tokens"],
-            )
-            self.add_messages(user_message, assistant_message, save_messages)
-            self.total_prompt_length += response["usage"]["prompt_tokens"]
-            self.total_completion_length += response["usage"]["completion_tokens"]
-            self.total_length += response["usage"]["total_tokens"]
+            content, assistant_message = self._handle_message_response(response)
+            self.add_messages([user_message, assistant_message], save_messages)
         except KeyError:
             raise KeyError(f"No AI generation: {response}")
 
@@ -411,7 +429,7 @@ class ChatLLMSession(ChatSession):
             role="assistant",
             content=content,
         )
-        self.add_messages(user_message, assistant_message, save_messages)
+        self.add_messages([user_message, assistant_message], save_messages)
 
     async def stream_async(
         self,
@@ -458,4 +476,45 @@ class ChatLLMSession(ChatSession):
             role="assistant",
             content=content,
         )
-        self.add_messages(user_message, assistant_message, save_messages)
+        self.add_messages([user_message, assistant_message], save_messages)
+
+    def _handle_message_response(self, response: ModelResponse):
+        """
+        Handle the response message from the LLM and return the content and assistant message.
+        """
+        content: str = response.choices[0]["message"]["content"]
+        assistant_message = ChatMessage(
+            role="assistant",
+            content=content,
+            finish_reason=response.choices[0]["finish_reason"],
+            prompt_length=response["usage"]["prompt_tokens"],
+            completion_length=response["usage"]["completion_tokens"],
+            total_length=response["usage"]["total_tokens"],
+        )
+        self.total_prompt_length += response["usage"]["prompt_tokens"]
+        self.total_completion_length += response["usage"]["completion_tokens"]
+        self.total_length += response["usage"]["total_tokens"]
+        return content, assistant_message
+
+    def _handle_tool_response(self, response: ModelResponse, tools: list[Tool]):
+        """
+        Handle the tool response from the LLM and return the tool history.
+        """
+        response_message = response.choices[0]["message"]
+        tool_calls = response_message["tool_calls"]
+        available_functions = {tool.function.__name__: tool.function for tool in tools}
+        for tool_call in tool_calls:
+            function_name = tool_call["function"]["name"]
+            function_args = json.loads(tool_call["function"]["arguments"])
+            function_to_call = available_functions.get(function_name)
+            if not callable(function_to_call):
+                raise ValueError(f"Function '{function_name}' is not callable")
+            function_response = function_to_call(**function_args)
+            function_message = {
+                "tool_call_id": tool_call["id"],
+                "role": "tool",
+                "name": function_name,
+                "content": function_response,
+            }
+            tool_history = [response_message, function_message]
+        return tool_history
