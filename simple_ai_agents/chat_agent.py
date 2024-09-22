@@ -210,6 +210,8 @@ class ChatAgent(BaseModel):
             stream = sess.stream(
                 prompt,
                 system=system,
+                tools=tools if tools else self.tools,
+                tool_choice=tool_choice if tool_choice else self.tool_choice,
                 save_messages=save_messages,
                 llm_options=llm_options,
             )
@@ -232,6 +234,8 @@ class ChatAgent(BaseModel):
         prompt: Union[str, Any],
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
@@ -242,6 +246,8 @@ class ChatAgent(BaseModel):
         return sess.stream(
             prompt,
             system=system,
+            tools=tools if tools else self.tools,
+            tool_choice=tool_choice if tool_choice else self.tool_choice,
             save_messages=save_messages,
             llm_options=llm_options,
         )
@@ -466,6 +472,8 @@ class ChatAgentAsync(ChatAgent):
         prompt: Union[str, Any],
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         save_messages: Optional[bool] = None,
         llm_options: Optional[LLMOptions] = None,
     ):
@@ -473,6 +481,8 @@ class ChatAgentAsync(ChatAgent):
         return sess.stream_async(
             prompt,
             system=system,
+            tools=tools if tools else self.tools,
+            tool_choice=tool_choice if tool_choice else self.tool_choice,
             save_messages=save_messages,
             llm_options=llm_options,
         )
