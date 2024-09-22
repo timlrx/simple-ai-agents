@@ -54,6 +54,7 @@ class Weather(BaseModel):
     [
         [Tool(tool_model=weather_tool_schema, function=get_current_weather)],
         [Tool(tool_model=Weather, function=get_current_weather)],
+        [Tool(function=get_current_weather)],
     ],
 )
 def test_gen_with_tool(tools):
@@ -70,6 +71,7 @@ def test_gen_with_tool(tools):
     [
         [Tool(tool_model=weather_tool_schema, function=get_current_weather)],
         [Tool(tool_model=Weather, function=get_current_weather)],
+        [Tool(function=get_current_weather)],
     ],
 )
 @pytest.mark.asyncio

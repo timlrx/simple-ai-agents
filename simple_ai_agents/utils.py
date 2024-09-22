@@ -6,6 +6,7 @@ from instructor.mode import Mode
 from instructor.process_response import process_response
 from pydantic import BaseModel
 
+from simple_ai_agents.external import create_schema_from_function
 from simple_ai_agents.models import Tool
 
 T_Model = TypeVar("T_Model", bound=BaseModel)
@@ -115,5 +116,10 @@ def format_tool_schema(tools: list[Tool]):
                 response_model=tool.tool_model, mode=Mode.TOOLS
             )
             tool.tool_model = kwargs["tools"][0]
+        elif tool.tool_model is None and callable(tool.function):
+            model = create_schema_from_function(tool.function.__name__, tool.function)
+            _, kwargs = handle_response_model(response_model=model, mode=Mode.TOOLS)
+            tool.tool_model = kwargs["tools"][0]
+
     tool_schemas = [tool.tool_model for tool in tools]
     return tools, tool_schemas

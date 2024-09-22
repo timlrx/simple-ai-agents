@@ -509,7 +509,7 @@ class ChatLLMSession(ChatSession):
         # Use tool.tool_model["function"]["name"] instead of too.function.__name__
         # since returned response is based on schema and there might be a name mismatch
         available_functions = {
-            tool.tool_model["function"]["name"]: tool.function for tool in tools
+            tool.tool_model["function"]["name"]: tool.function for tool in tools  # type: ignore
         }
         for tool_call in tool_calls:
             function_name = tool_call["function"]["name"]

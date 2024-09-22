@@ -35,8 +35,8 @@ class LLMOptions(TypedDict, total=False):
 
 
 class Tool(BaseModel):
-    tool_model: dict[str, Any] | type[BaseModel]
     function: Callable
+    tool_model: Optional[dict[str, Any] | type[BaseModel]] = None
 
 
 class ChatMessage(BaseModel):
