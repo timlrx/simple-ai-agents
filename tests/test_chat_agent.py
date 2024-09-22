@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -6,6 +7,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 
 from simple_ai_agents.chat_agent import ChatAgent, ChatAgentAsync
+from simple_ai_agents.models import Tool
 
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 load_dotenv()
@@ -105,3 +107,22 @@ async def test_chat_agent_async():
     chatbot = ChatAgentAsync()
     response = await chatbot("Hello")
     assert isinstance(response, str)
+
+
+def get_current_weather(location, unit="fahrenheit"):
+    """Get the current weather in a given location"""
+    if "tokyo" in location.lower():
+        return json.dumps({"location": "Tokyo", "temperature": "10", "unit": "celsius"})
+    elif "san francisco" in location.lower():
+        return json.dumps(
+            {"location": "San Francisco", "temperature": "72", "unit": "fahrenheit"}
+        )
+    else:
+        return json.dumps({"location": location, "temperature": "unknown"})
+
+
+def test_chat_agent_with_tools():
+    chatbot = ChatAgent(tools=[Tool(function=get_current_weather)])
+    response = chatbot("Hi, what is the weather in San Francisco?")
+    assert isinstance(response, str)
+    assert "72" in response

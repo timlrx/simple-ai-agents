@@ -1,3 +1,4 @@
+import json
 from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Generator, Literal, Optional, TypeVar, Union
 
@@ -5,13 +6,17 @@ import litellm
 from instructor import OpenAISchema
 from instructor.mode import Mode
 from instructor.process_response import handle_response_model
-from litellm import acompletion, completion
+from litellm import CustomStreamWrapper, acompletion, completion
 from litellm.files.main import ModelResponse
 from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
 from pydantic import BaseModel, ValidationError
 
-from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions
-from simple_ai_agents.utils import getJSONMode, process_json_response
+from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions, Tool
+from simple_ai_agents.utils import (
+    format_tool_schema,
+    getJSONMode,
+    process_json_response,
+)
 
 litellm.telemetry = False
 litellm.add_function_to_prompt = False  # add function to prompt for non openai models
@@ -38,7 +43,7 @@ class ChatLLMSession(ChatSession):
         ChatMessage,
         Optional[str],
         Optional[type[OpenAISchema]],
-        Optional[Union[Mode, Literal["text"]]],
+        Optional[Union[Mode, Literal["auto"]]],
     ]:
         """
         Prepare a request to send to liteLLM.
@@ -56,7 +61,7 @@ class ChatLLMSession(ChatSession):
         Returns:
             Tuple: (model, kwargs, history, user_message, llm_provider, response_model, mode)
         """
-        mode = "text"
+        mode = "auto"
         # Just use user prompt, no system prompt required
         if response_model:
             history = [
@@ -117,6 +122,8 @@ class ChatLLMSession(ChatSession):
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> str:
         """
@@ -127,6 +134,10 @@ class ChatLLMSession(ChatSession):
             system (str, optional): System prompt. Defaults to None.
             save_messages (bool, optional): Whether to save the messages.
                 Defaults to None.
+            tools (list[Tool], optional): List of tools available for use by the LLM.
+                Defaults to None.
+            tool_choice (str | dict[str, Any] | None, optional): Tool choice configuration.
+                Defaults to individual providers default behaviour.
             llm_options (LLMOptions, optional): LiteLLM options.
                 See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
                 Defaults to None.
@@ -136,26 +147,32 @@ class ChatLLMSession(ChatSession):
             system=system,
             llm_options=llm_options,
         )
+        tools, tool_schemas = format_tool_schema(tools) if tools else (None, None)
         response: ModelResponse = completion(
-            model=model, messages=history, **kwargs
+            model=model,
+            messages=history,
+            tools=tool_schemas,
+            tool_choice=tool_choice,
+            **kwargs,
         )  # type: ignore
-        try:
-            content: str = response.choices[0]["message"]["content"]
-            assistant_message = ChatMessage(
-                role="assistant",
-                content=content,
-                finish_reason=response.choices[0]["finish_reason"],
-                prompt_length=response["usage"]["prompt_tokens"],
-                completion_length=response["usage"]["completion_tokens"],
-                total_length=response["usage"]["total_tokens"],
+
+        # Make a 2nd request if tool calls are present
+        response_message = response.choices[0]["message"]
+        tool_calls = response_message["tool_calls"]
+        if tool_calls and tools:
+            tool_history = self._handle_tool_response(
+                response_message, tool_calls, tools
             )
-            self.add_messages(user_message, assistant_message, save_messages)
-            self.total_prompt_length += response["usage"]["prompt_tokens"]
-            self.total_completion_length += response["usage"]["completion_tokens"]
-            self.total_length += response["usage"]["total_tokens"]
+            history.extend(tool_history)
+            response: ModelResponse = completion(
+                model=model,
+                messages=history,
+            )  # type: ignore
+        try:
+            content, assistant_message = self._handle_message_response(response)
+            self.add_messages([user_message, assistant_message], save_messages)
         except KeyError:
             raise KeyError(f"No AI generation: {response}")
-
         return content
 
     async def gen_async(
@@ -163,6 +180,8 @@ class ChatLLMSession(ChatSession):
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> str:
         """
@@ -173,6 +192,10 @@ class ChatLLMSession(ChatSession):
             system (str, optional): System prompt. Defaults to None.
             save_messages (bool, optional): Whether to save the messages.
                 Defaults to None.
+            tools (list[Tool], optional): List of tools available for use by the LLM.
+                Defaults to None.
+            tool_choice (str | dict[str, Any] | None, optional): Tool choice configuration.
+                Defaults to individual providers default behaviour.
             llm_options (LLMOptions, optional): LiteLLM options.
                 See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
                 Defaults to None.
@@ -180,23 +203,28 @@ class ChatLLMSession(ChatSession):
         model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
+        tools, tool_schemas = format_tool_schema(tools) if tools else (None, None)
         response: ModelResponse = await acompletion(
-            model=model, messages=history, **kwargs
+            model=model,
+            messages=history,
+            tools=tool_schemas,
+            tool_choice=tool_choice,  # type: ignore
+            **kwargs,
         )  # type: ignore
-        try:
-            content: str = response.choices[0]["message"]["content"]
-            assistant_message = ChatMessage(
-                role="assistant",
-                content=content,
-                finish_reason=response.choices[0]["finish_reason"],
-                prompt_length=response["usage"]["prompt_tokens"],
-                completion_length=response["usage"]["completion_tokens"],
-                total_length=response["usage"]["total_tokens"],
+        response_message = response.choices[0]["message"]
+        tool_calls = response_message["tool_calls"]
+        if tool_calls and tools:
+            tool_history = self._handle_tool_response(
+                response_message, tool_calls, tools
             )
-            self.add_messages(user_message, assistant_message, save_messages)
-            self.total_prompt_length += response["usage"]["prompt_tokens"]
-            self.total_completion_length += response["usage"]["completion_tokens"]
-            self.total_length += response["usage"]["total_tokens"]
+            history.extend(tool_history)
+            response: ModelResponse = await acompletion(
+                model=model,
+                messages=history,
+            )  # type: ignore
+        try:
+            content, assistant_message = self._handle_message_response(response)
+            self.add_messages([user_message, assistant_message], save_messages)
         except KeyError:
             raise KeyError(f"No AI generation: {response}")
 
@@ -373,6 +401,8 @@ class ChatLLMSession(ChatSession):
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> Generator[dict[str, str], None, None]:
         """
@@ -386,24 +416,71 @@ class ChatLLMSession(ChatSession):
             system (str, optional): System prompt. Defaults to None.
             save_messages (bool, optional): Whether to save the messages.
                 Defaults to None.
+            tools (list[Tool], optional): List of tools available for use by the LLM.
+                Defaults to None.
+            tool_choice (str | dict[str, Any] | None, optional): Tool choice configuration.
+                Defaults to individual providers default behaviour.
             llm_options (LLMOptions, optional): LiteLLM options.
                 See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
                 Defaults to None.
 
         Yields:
-            Generator[dict[str, str], None, None]
+            Generator[dict[str, str], None, None]: A generator yielding delta and response.
         """
         model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
-
-        response = completion(model=model, messages=history, stream=True, **kwargs)
+        tools, tool_schemas = format_tool_schema(tools) if tools else (None, None)
+        response = completion(
+            model=model,
+            messages=history,
+            stream=True,
+            tools=tool_schemas,
+            tool_choice=tool_choice,
+            **kwargs,
+        )
+        tool_calls = []
         content_chunks = []
         for chunk in response:
-            delta: str = chunk["choices"][0]["delta"].get("content")  # type: ignore
-            if delta:
-                content_chunks.append(delta)
-                yield {"delta": delta, "response": "".join(content_chunks)}
+            delta = chunk["choices"][0]["delta"]  # type: ignore
+            if delta and delta.get("content"):  # Text stream returned
+                content = delta.get("content")
+                content_chunks.append(content)
+                yield {"delta": content, "response": "".join(content_chunks)}
+
+            # Handle tool call
+            if delta and delta.get("tool_calls") and tools:
+                tc_chunk_list = delta.get("tool_calls")
+                for tc_chunk in tc_chunk_list:
+                    if len(tool_calls) <= tc_chunk.index:
+                        tool_calls.append(
+                            {
+                                "id": "",
+                                "type": "function",
+                                "function": {"name": "", "arguments": ""},
+                            }
+                        )
+                    tc = tool_calls[tc_chunk.index]
+                    if tc_chunk.id:
+                        tc["id"] += tc_chunk.id
+                    if tc_chunk.function.name:
+                        tc["function"]["name"] += tc_chunk.function.name
+                    if tc_chunk.function.arguments:
+                        tc["function"]["arguments"] += tc_chunk.function.arguments
+
+        response_message = {"tool_calls": tool_calls, "role": "assistant"}
+        if tool_calls and tools:
+            tool_history = self._handle_tool_response(
+                response_message, tool_calls, tools
+            )
+            history.extend(tool_history)
+            response = completion(model=model, messages=history, stream=True, **kwargs)
+        for chunk in response:
+            delta = chunk["choices"][0]["delta"]  # type: ignore
+            if delta and delta.get("content"):
+                content = delta.get("content")
+                content_chunks.append(content)
+                yield {"delta": content, "response": "".join(content_chunks)}
 
         content = "".join(content_chunks)
         # streaming does not currently return token counts
@@ -411,13 +488,15 @@ class ChatLLMSession(ChatSession):
             role="assistant",
             content=content,
         )
-        self.add_messages(user_message, assistant_message, save_messages)
+        self.add_messages([user_message, assistant_message], save_messages)
 
     async def stream_async(
         self,
         prompt: str,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> AsyncGenerator[dict[str, str], None]:
         """
@@ -429,6 +508,10 @@ class ChatLLMSession(ChatSession):
         Args:
             prompt (str): User prompt
             system (str, optional): System prompt. Defaults to None.
+            tools (list[Tool], optional): List of tools available for use by the LLM.
+                Defaults to None.
+            tool_choice (str | dict[str, Any] | None, optional): Tool choice configuration.
+                Defaults to individual providers default behaviour.
             save_messages (bool, optional): Whether to save the messages.
                 Defaults to None.
             llm_options (LLMOptions, optional): LiteLLM options.
@@ -441,16 +524,59 @@ class ChatLLMSession(ChatSession):
         model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
             prompt, system=system, llm_options=llm_options
         )
-
-        response: ModelResponse = await acompletion(
-            model=model, messages=history, stream=True, **kwargs
-        )  # type: ignore
+        tools, tool_schemas = format_tool_schema(tools) if tools else (None, None)
+        response: CustomStreamWrapper = await acompletion(
+            model=model,
+            messages=history,
+            stream=True,
+            tools=tool_schemas,
+            tool_choice=tool_choice,  # type: ignore
+            **kwargs,
+        )
+        tool_calls = []
         content_chunks = []
-        async for chunk in response:  # type: ignore
-            delta: str = chunk["choices"][0]["delta"].get("content")
-            if delta:
-                content_chunks.append(delta)
-                yield {"delta": delta, "response": "".join(content_chunks)}
+        async for chunk in response:
+            delta = chunk["choices"][0]["delta"]
+            if delta and delta.get("content"):  # Text stream returned
+                content = delta.get("content")
+                content_chunks.append(content)
+                yield {"delta": content, "response": "".join(content_chunks)}
+
+            # Handle tool call
+            if delta and delta.get("tool_calls") and tools:
+                tc_chunk_list = delta.get("tool_calls")
+                for tc_chunk in tc_chunk_list:
+                    if len(tool_calls) <= tc_chunk.index:
+                        tool_calls.append(
+                            {
+                                "id": "",
+                                "type": "function",
+                                "function": {"name": "", "arguments": ""},
+                            }
+                        )
+                    tc = tool_calls[tc_chunk.index]
+                    if tc_chunk.id:
+                        tc["id"] += tc_chunk.id
+                    if tc_chunk.function.name:
+                        tc["function"]["name"] += tc_chunk.function.name
+                    if tc_chunk.function.arguments:
+                        tc["function"]["arguments"] += tc_chunk.function.arguments
+
+        response_message = {"tool_calls": tool_calls, "role": "assistant"}
+        if tool_calls and tools:
+            tool_history = self._handle_tool_response(
+                response_message, tool_calls, tools
+            )
+            history.extend(tool_history)
+            response = await acompletion(
+                model=model, messages=history, stream=True, **kwargs
+            )  # type: ignore
+        async for chunk in response:
+            delta = chunk["choices"][0]["delta"]
+            if delta and delta.get("content"):
+                content = delta.get("content")
+                content_chunks.append(content)
+                yield {"delta": content, "response": "".join(content_chunks)}
 
         content = "".join(content_chunks)
         # streaming does not currently return token counts
@@ -458,4 +584,50 @@ class ChatLLMSession(ChatSession):
             role="assistant",
             content=content,
         )
-        self.add_messages(user_message, assistant_message, save_messages)
+        self.add_messages([user_message, assistant_message], save_messages)
+
+    def _handle_message_response(self, response: ModelResponse):
+        """
+        Handle the response message from the LLM and return the content and assistant message.
+        """
+        content: str = response.choices[0]["message"]["content"]
+        assistant_message = ChatMessage(
+            role="assistant",
+            content=content,
+            finish_reason=response.choices[0]["finish_reason"],
+            prompt_length=response["usage"]["prompt_tokens"],
+            completion_length=response["usage"]["completion_tokens"],
+            total_length=response["usage"]["total_tokens"],
+        )
+        self.total_prompt_length += response["usage"]["prompt_tokens"]
+        self.total_completion_length += response["usage"]["completion_tokens"]
+        self.total_length += response["usage"]["total_tokens"]
+        return content, assistant_message
+
+    def _handle_tool_response(self, response_message, tool_calls, tools: list[Tool]):
+        """
+        Handle the tool response from the LLM and return the tool history.
+        """
+        # Use tool.tool_model["function"]["name"] instead of too.function.__name__
+        # since returned response is based on schema and there might be a name mismatch
+        available_functions = {
+            tool.tool_model["function"]["name"]: tool.function for tool in tools  # type: ignore
+        }
+        tool_history = [response_message]
+        for tool_call in tool_calls:
+            function_name = tool_call["function"]["name"]
+            function_args = json.loads(tool_call["function"]["arguments"])
+            function_to_call = available_functions.get(function_name)
+            if not callable(function_to_call):
+                raise ValueError(
+                    f"Function '{function_name}' does not exist or is not callable"
+                )
+            function_response = function_to_call(**function_args)
+            function_message = {
+                "tool_call_id": tool_call["id"],
+                "role": "tool",
+                "name": function_name,
+                "content": function_response,
+            }
+            tool_history.append(function_message)
+        return tool_history

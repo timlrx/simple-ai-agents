@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Dict, List, Literal, Optional, Set, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Set, Union
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -32,6 +32,11 @@ class LLMOptions(TypedDict, total=False):
     model_list: list
     # For ollama only, see: https://docs.litellm.ai/docs/providers/ollama#example-usage---json-mode
     format: Literal["json"]
+
+
+class Tool(BaseModel):
+    function: Callable
+    tool_model: Optional[dict[str, Any] | type[BaseModel]] = None
 
 
 class ChatMessage(BaseModel):
@@ -77,8 +82,7 @@ class ChatSession(BaseModel):
 
     def add_messages(
         self,
-        user_message: ChatMessage,
-        assistant_message: ChatMessage,
+        messages: List[ChatMessage],
         save_messages: Optional[bool] = None,
     ) -> None:
         # if save_messages is explicitly defined, always use that choice
@@ -87,8 +91,6 @@ class ChatSession(BaseModel):
 
         if to_save:
             if save_messages:
-                self.messages.append(user_message)
-                self.messages.append(assistant_message)
+                self.messages.extend(messages)
         elif self.save_messages:
-            self.messages.append(user_message)
-            self.messages.append(assistant_message)
+            self.messages.extend(messages)
