@@ -12,8 +12,8 @@ mistral: LLMOptions = {
     "api_base": "http://localhost:11434",
 }
 
-llama2: LLMOptions = {
-    "model": "ollama/llama2",
+llama3: LLMOptions = {
+    "model": "ollama/llama3.1",
     "temperature": 0.7,
     "api_base": "http://localhost:11434",
 }
@@ -33,7 +33,7 @@ def store_conversation():
     customer = ChatAgent(
         system="You are a customer at a shop. Speak concisely and clearly.",
         character="customer",
-        llm_options=llama2,
+        llm_options=llama3,
         ai_text_color="bright_green",
     )
     runs = 0
