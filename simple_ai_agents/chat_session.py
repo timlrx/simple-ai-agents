@@ -610,10 +610,10 @@ class ChatLLMSession(ChatSession):
         """
         # Use tool.tool_model["function"]["name"] instead of too.function.__name__
         # since returned response is based on schema and there might be a name mismatch
-        print(tool_calls)
         available_functions = {
             tool.tool_model["function"]["name"]: tool.function for tool in tools  # type: ignore
         }
+        tool_history = [response_message]
         for tool_call in tool_calls:
             function_name = tool_call["function"]["name"]
             function_args = json.loads(tool_call["function"]["arguments"])
@@ -629,5 +629,5 @@ class ChatLLMSession(ChatSession):
                 "name": function_name,
                 "content": function_response,
             }
-            tool_history = [response_message, function_message]
+            tool_history.append(function_message)
         return tool_history
