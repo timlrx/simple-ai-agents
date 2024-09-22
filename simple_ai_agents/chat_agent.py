@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from rich.console import Console
 
 from simple_ai_agents.chat_session import ChatLLMSession
-from simple_ai_agents.models import ChatMessage, LLMOptions
+from simple_ai_agents.models import ChatMessage, LLMOptions, Tool
 
 
 class ChatAgent(BaseModel):
@@ -51,11 +51,15 @@ class ChatAgent(BaseModel):
     sessions: Dict[Union[str, UUID], ChatLLMSession] = {}
     character: Optional[str] = "Chat Agent"
     ai_text_color: str = "bright_magenta"
+    tools: Optional[list[Tool]] = None
+    tool_choice: Optional[str | dict[str, Any]] = None
 
     def __init__(
         self,
         character: Optional[str] = None,
         system: Optional[str] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         id: Union[str, UUID] = uuid4(),
         prime: bool = True,
         default_session: bool = True,
@@ -72,6 +76,10 @@ class ChatAgent(BaseModel):
                 Defaults to None.
             system (str, optional): System prompt for chatbot message.
                 If None is provided it defaults to "You are a helpful assistant."
+            tools (list[Tool], optional): List of tools available for use by the LLM.
+                Defaults to None.
+            tool_choice (str | dict[str, Any] | None, optional): Tool choice configuration.
+                Defaults to individual providers default behaviour.
             id (Union[str, UUID], optional): Initial session ID of the chatbot.
                 Defaults to uuid4().
             prime (bool, optional): Whether to prime the chatbot with initial messages.
@@ -99,6 +107,10 @@ class ChatAgent(BaseModel):
             new_default_session = self.new_session(
                 set_default=True, system=system_format, id=id, **kwargs
             )
+        if tools:
+            self.tools = tools
+        if tool_choice:
+            self.tool_choice = tool_choice
         if console:
             if not new_default_session:
                 raise ValueError(
@@ -182,6 +194,8 @@ class ChatAgent(BaseModel):
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
         console_output: bool = False,
     ) -> str:
@@ -207,6 +221,8 @@ class ChatAgent(BaseModel):
             return sess.gen(
                 prompt,
                 system=system,
+                tools=tools if tools else self.tools,
+                tool_choice=tool_choice if tool_choice else self.tool_choice,
                 save_messages=save_messages,
                 llm_options=llm_options,
             )
@@ -431,6 +447,8 @@ class ChatAgentAsync(ChatAgent):
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
         save_messages: Optional[bool] = None,
+        tools: Optional[list[Tool]] = None,
+        tool_choice: Optional[str | dict[str, Any]] = None,
         llm_options: Optional[LLMOptions] = None,
     ) -> str:
         sess = self.get_session(id)
@@ -438,6 +456,8 @@ class ChatAgentAsync(ChatAgent):
             prompt,
             system=system,
             save_messages=save_messages,
+            tools=tools if tools else self.tools,
+            tool_choice=tool_choice if tool_choice else self.tool_choice,
             llm_options=llm_options,
         )
 
