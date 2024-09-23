@@ -3,7 +3,7 @@ from typing import Optional, TypeVar
 
 from instructor import handle_response_model
 from instructor.mode import Mode
-from instructor.process_response import process_response
+from instructor.process_response import process_response, process_response_async
 from pydantic import BaseModel
 
 from simple_ai_agents.external import create_schema_from_function
@@ -96,8 +96,47 @@ def process_json_response(
                 mode=Mode.TOOLS,
             )  # type: ignore
         else:
+            print("Processing response")
             # Let instructor handle the response
             return process_response(
+                response,
+                response_model=response_model,
+                stream=stream,
+                strict=strict,
+                mode=mode,
+            )  # type: ignore
+
+
+async def process_json_response_async(
+    response,
+    response_model: type[T_Model],
+    llm_provider: Optional[str],
+    stream: bool,
+    strict: Optional[bool] = None,
+    mode: Mode = Mode.FUNCTIONS,
+) -> T_Model:
+    """
+    Wrapper around instructor process_response to specially handle different response mode.
+    If ollama is used with JSON mode, we patch the name and parse it as if it is a function call.
+    """
+    if response_model is not None:
+        if mode in {Mode.JSON} and (
+            llm_provider == "ollama" or llm_provider == "ollama_chat"
+        ):
+            message = response.choices[0].message
+            tool_call = message.tool_calls[0]
+            tool_call.function.name = response_model.openai_schema["name"]  # type: ignore
+            return await process_response_async(
+                response,
+                response_model=response_model,
+                stream=stream,
+                strict=strict,
+                mode=Mode.TOOLS,
+            )  # type: ignore
+        else:
+            print("Processing response")
+            # Let instructor handle the response
+            return await process_response_async(
                 response,
                 response_model=response_model,
                 stream=stream,
