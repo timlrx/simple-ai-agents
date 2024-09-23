@@ -12,12 +12,10 @@ def now_tz():
 
 class LLMOptions(TypedDict, total=False):
     model: str
-    functions: List
-    function_call: str
+    num_retries: int
     temperature: float
     top_p: float
     n: int
-    stream: bool
     stop: str
     max_tokens: float
     presence_penalty: float

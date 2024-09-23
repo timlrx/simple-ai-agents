@@ -10,29 +10,21 @@ from simple_ai_agents.models import LLMOptions
 
 load_dotenv()
 
-openai: LLMOptions = {"model": "gpt-4o-mini", "temperature": 0.7}
-anthropic: LLMOptions = {
-    "model": "claude-3-5-sonnet-20240620",
-}
-groq: LLMOptions = {
-    "model": "groq/llama3-8b-8192",
-}
-github: LLMOptions = {
-    "model": "github/gpt-4o-mini",
-}
-anyscale: LLMOptions = {
-    "model": "anyscale/mistralai/Mistral-7B-Instruct-v0.1",
-    "temperature": 0.7,
-}
-together: LLMOptions = {
-    "model": "together_ai/meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-    "temperature": 0.7,
-}
-mistral: LLMOptions = {
-    "model": "ollama/mistral",
-    "temperature": 0.7,
-    "api_base": "http://localhost:11434",
-}
+openai = LLMOptions(model="gpt-4o-mini", temperature=0.7)
+anthropic = LLMOptions(model="claude-3-5-sonnet-20240620")
+groq = LLMOptions(model="groq/llama-3.1-8b-instant")
+github = LLMOptions(model="github/gpt-4o-mini")
+anyscale = LLMOptions(
+    model="anyscale/mistralai/Mistral-7B-Instruct-v0.1", temperature=0.7
+)
+together = LLMOptions(
+    model="together_ai/meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", temperature=0.7
+)
+mistral = LLMOptions(
+    model="ollama/mistral", temperature=0.7, api_base="http://localhost:11434"
+)
+llama3 = LLMOptions(model="ollama/llama3.1", api_base="http://localhost:11434")
+cerebras = LLMOptions(model="cerebras/llama3.1-70b")
 
 
 class Person(BaseModel):

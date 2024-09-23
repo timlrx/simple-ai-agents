@@ -30,7 +30,7 @@ T_Model = TypeVar("T_Model", bound=BaseModel)
 
 class ChatLLMSession(ChatSession):
     system: str = "You are a helpful assistant."
-    llm_options: Optional[LLMOptions] = {"model": "gpt-4o-mini"}
+    llm_options: Optional[LLMOptions] = LLMOptions(model="gpt-4o-mini")
 
     def prepare_request(
         self,
