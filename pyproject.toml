@@ -10,7 +10,7 @@ python = ">=3.9,<4.0"
 python-dotenv = "^1.0.0"
 pydantic = "^2.4.0"
 openai = "^1.45.0"
-litellm = "^1.45.0"
+litellm = "^1.47.0"
 click = "^8.1.7"
 instructor = "^1.4.1"
 python-dateutil = "^2.8.2"
@@ -24,6 +24,9 @@ pytest-mock = "^3.12.0"
 pytest-asyncio = "^0.21.1"
 fastapi = { extras = ["standard"], version = "^0.114.2" }
 uvicorn = "^0.30.6"
+opentelemetry-api = "1.25.0"
+opentelemetry-sdk = "1.25.0"
+opentelemetry-exporter-otlp = "1.25.0"
 
 [build-system]
 requires = ["poetry-core"]
