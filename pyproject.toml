@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "simple-ai-agents"
-version = "0.4.0"
+version = "0.5.0"
 description = "A Python package for creating simple multi-agent workflows using various LLMs. The library extends the capabilities of Simple AI Chat by supporting over 100 LLM providers, structured responses, and multi-agent conversations, enabling easy experimentation, deployment, and orchestration of chatbots."
 authors = ["Timothy Lin <timothy0336@hotmail.com>"]
 readme = "README.md"
