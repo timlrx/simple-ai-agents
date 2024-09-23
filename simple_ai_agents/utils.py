@@ -69,6 +69,23 @@ def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
         return Mode.MD_JSON
 
 
+def format_tool_call(message: BaseModel | dict) -> dict:
+    """
+    Format the tool call message to be sent to the LLM
+    """
+    if not isinstance(message, (BaseModel, dict)):
+        raise ValueError("Message should be a BaseModel or a dict.")
+
+    d = message.model_dump() if isinstance(message, BaseModel) else message
+    tool_calls = d.get("tool_calls")
+    role = d.get("role")
+
+    if not tool_calls or not role:
+        raise ValueError("Message should have both 'tool_calls' and 'role' fields.")
+
+    return {"role": role, "tool_calls": tool_calls}
+
+
 def process_json_response(
     response,
     response_model: type[T_Model],

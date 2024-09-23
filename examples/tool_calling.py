@@ -12,6 +12,10 @@ openai: LLMOptions = {"model": "gpt-4o-mini", "temperature": 0.7}
 github: LLMOptions = {
     "model": "github/gpt-4o-mini",
 }
+groq: LLMOptions = {
+    "model": "groq/llama-3.1-70b-versatile",
+    "temperature": 0.7,
+}
 
 
 def get_current_weather(location, unit="fahrenheit"):
@@ -65,6 +69,7 @@ def run():
     sess = ChatLLMSession()
     response = sess.gen(
         "What's the weather like in San Francisco",
+        system="Use the tools provided to answer the question",
         llm_options=github,
         tools=[
             # Tool(tool_model=weather_tool_schema, function=get_current_weather),

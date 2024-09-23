@@ -13,6 +13,7 @@ from pydantic import BaseModel, ValidationError
 
 from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions, Tool
 from simple_ai_agents.utils import (
+    format_tool_call,
     format_tool_schema,
     getJSONMode,
     process_json_response,
@@ -750,7 +751,7 @@ class ChatLLMSession(ChatSession):
         available_functions = {
             tool.tool_model["function"]["name"]: tool.function for tool in tools  # type: ignore
         }
-        tool_history = [response_message]
+        tool_history = [format_tool_call(response_message)]
         for tool_call in tool_calls:
             function_name = tool_call["function"]["name"]
             function_args = json.loads(tool_call["function"]["arguments"])
