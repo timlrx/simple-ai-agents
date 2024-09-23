@@ -96,7 +96,6 @@ def process_json_response(
                 mode=Mode.TOOLS,
             )  # type: ignore
         else:
-            print("Processing response")
             # Let instructor handle the response
             return process_response(
                 response,
@@ -134,7 +133,6 @@ async def process_json_response_async(
                 mode=Mode.TOOLS,
             )  # type: ignore
         else:
-            print("Processing response")
             # Let instructor handle the response
             return await process_response_async(
                 response,
