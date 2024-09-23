@@ -34,7 +34,7 @@ together_ai_tool_models = [
 ]
 
 
-def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
+def getJSONMode(llm_provider: str, model: str, stream: Optional[bool]) -> Mode:
     # LiteLLM transforms openai tools to anthropic / vertex hence no need for separate mode
     if llm_provider in [
         "openai",
@@ -55,6 +55,10 @@ def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
         llm_provider == "ollama" or llm_provider == "ollama_chat"
     ) and model in ollama_tool_models:
         return Mode.TOOLS
+    # Stream with json not supported
+    # https://inference-docs.cerebras.ai/openai#currently-unsupported-openai-features
+    elif llm_provider == "cerebras" and not stream:
+        return Mode.JSON_SCHEMA
     elif llm_provider == "ollama" or llm_provider == "ollama_chat":
         return Mode.JSON
     elif llm_provider == "anyscale" and model.replace("anyscale/", "") in [
@@ -79,11 +83,12 @@ def format_tool_call(message: BaseModel | dict) -> dict:
     d = message.model_dump() if isinstance(message, BaseModel) else message
     tool_calls = d.get("tool_calls")
     role = d.get("role")
+    content = d.get("content")
 
     if not tool_calls or not role:
         raise ValueError("Message should have both 'tool_calls' and 'role' fields.")
 
-    return {"role": role, "tool_calls": tool_calls}
+    return {"role": role, "tool_calls": tool_calls, "content": content}
 
 
 def process_json_response(

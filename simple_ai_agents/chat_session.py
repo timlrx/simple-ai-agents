@@ -38,6 +38,7 @@ class ChatLLMSession(ChatSession):
         system: Optional[str] = None,
         response_model: Optional[type[BaseModel]] = None,
         llm_options: Optional[LLMOptions] = None,
+        stream: Optional[bool] = False,
     ) -> tuple[
         str,
         dict[str, Any],
@@ -99,7 +100,7 @@ class ChatLLMSession(ChatSession):
         kwargs = {k: v for k, v in litellm_options.items() if k != "model"}
 
         if response_model:
-            mode = getJSONMode(custom_llm_provider, model)
+            mode = getJSONMode(custom_llm_provider, model, stream)
             kwargs["messages"] = history  # handle_response_model will add messages
             response_model, fn_kwargs = handle_response_model(
                 response_model=response_model, mode=mode, **kwargs
@@ -169,6 +170,7 @@ class ChatLLMSession(ChatSession):
             response: ModelResponse = completion(
                 model=model,
                 messages=history,
+                tools=tool_schemas if llm_provider == "anthropic" else None,
             )  # type: ignore
         try:
             content, assistant_message = self._handle_message_response(response)
@@ -223,6 +225,7 @@ class ChatLLMSession(ChatSession):
             response: ModelResponse = await acompletion(
                 model=model,
                 messages=history,
+                tools=tool_schemas if llm_provider == "anthropic" else None,
             )  # type: ignore
         try:
             content, assistant_message = self._handle_message_response(response)
@@ -476,7 +479,13 @@ class ChatLLMSession(ChatSession):
                 response_message, tool_calls, tools
             )
             history.extend(tool_history)
-            response = completion(model=model, messages=history, stream=True, **kwargs)
+            response = completion(
+                model=model,
+                messages=history,
+                stream=True,
+                tools=tool_schemas if llm_provider == "anthropic" else None,
+                **kwargs,
+            )
         for chunk in response:
             delta = chunk["choices"][0]["delta"]  # type: ignore
             if delta and delta.get("content"):
@@ -533,6 +542,7 @@ class ChatLLMSession(ChatSession):
             system=system,
             response_model=response_model,
             llm_options=llm_options,
+            stream=True,
         )  # type: ignore
         response_model_processed: T_Model = Partial[response_model_processed]  # type: ignore
         response_mode: Mode
@@ -601,6 +611,7 @@ class ChatLLMSession(ChatSession):
             system=system,
             response_model=response_model,
             llm_options=llm_options,
+            stream=True,
         )  # type: ignore
         response_model_processed: T_Model = Partial[response_model_processed]  # type: ignore
         response_mode: Mode
@@ -660,7 +671,7 @@ class ChatLLMSession(ChatSession):
             AsyncGenerator[dict[str, str], None]
         """
         model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
-            prompt, system=system, llm_options=llm_options
+            prompt, system=system, llm_options=llm_options, stream=True
         )
         tools, tool_schemas = format_tool_schema(tools) if tools else (None, None)
         response: CustomStreamWrapper = await acompletion(
@@ -707,7 +718,11 @@ class ChatLLMSession(ChatSession):
             )
             history.extend(tool_history)
             response = await acompletion(
-                model=model, messages=history, stream=True, **kwargs
+                model=model,
+                messages=history,
+                stream=True,
+                tools=tool_schemas if llm_provider == "anthropic" else None,
+                **kwargs,
             )  # type: ignore
         async for chunk in response:
             delta = chunk["choices"][0]["delta"]
