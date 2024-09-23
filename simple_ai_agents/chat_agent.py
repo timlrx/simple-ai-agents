@@ -2,15 +2,18 @@ import csv
 import datetime
 import json
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, Dict, Optional, Union
+from typing import Any, AsyncGenerator, Dict, Generator, Optional, TypeVar, Union
 from uuid import UUID, uuid4
 
 from dateutil import tz
+from instructor import OpenAISchema
 from pydantic import BaseModel
 from rich.console import Console
 
 from simple_ai_agents.chat_session import ChatLLMSession
 from simple_ai_agents.models import ChatMessage, LLMOptions, Tool
+
+T_Model = TypeVar("T_Model", bound=BaseModel)
 
 
 class ChatAgent(BaseModel):
@@ -255,16 +258,35 @@ class ChatAgent(BaseModel):
     def gen_model(
         self,
         prompt: Union[str, Any],
-        response_model: type[BaseModel],
+        response_model: type[T_Model | OpenAISchema | BaseModel],
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
         llm_options: Optional[LLMOptions] = None,
-    ):
+    ) -> T_Model:
         """
         Generate a pydantic typed model from the AI.
         """
         sess = self.get_session(id)
         return sess.gen_model(
+            prompt,
+            response_model,
+            system=system,
+            llm_options=llm_options,
+        )
+
+    def stream_model(
+        self,
+        prompt: str,
+        response_model: type[T_Model | OpenAISchema | BaseModel],
+        id: Optional[Union[str, UUID]] = None,
+        system: Optional[str] = None,
+        llm_options: Optional[LLMOptions] = None,
+    ) -> Generator[T_Model, None, None]:
+        """
+        Stream a pydantic typed model from the AI.
+        """
+        sess = self.get_session(id)
+        return sess.stream_model(
             prompt,
             response_model,
             system=system,
@@ -487,16 +509,35 @@ class ChatAgentAsync(ChatAgent):
             llm_options=llm_options,
         )
 
-    async def gen_model(
+    async def gen_model_async(
         self,
         prompt: Union[str, Any],
-        response_model: type[BaseModel],
+        response_model: type[T_Model | OpenAISchema | BaseModel],
         id: Optional[Union[str, UUID]] = None,
         system: Optional[str] = None,
         llm_options: Optional[LLMOptions] = None,
-    ):
+    ) -> T_Model:
         sess = self.get_session(id)
         return await sess.gen_model_async(
+            prompt,
+            response_model,
+            system=system,
+            llm_options=llm_options,
+        )
+
+    async def stream_model_async(
+        self,
+        prompt: str,
+        response_model: type[T_Model | OpenAISchema | BaseModel],
+        id: Optional[Union[str, UUID]] = None,
+        system: Optional[str] = None,
+        llm_options: Optional[LLMOptions] = None,
+    ) -> AsyncGenerator[T_Model, None]:
+        """
+        Stream a pydantic typed model from the AI asynchronously.
+        """
+        sess = self.get_session(id)
+        return sess.stream_model_async(
             prompt,
             response_model,
             system=system,

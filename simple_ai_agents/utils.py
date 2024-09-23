@@ -3,7 +3,7 @@ from typing import Optional, TypeVar
 
 from instructor import handle_response_model
 from instructor.mode import Mode
-from instructor.process_response import process_response
+from instructor.process_response import process_response, process_response_async
 from pydantic import BaseModel
 
 from simple_ai_agents.external import create_schema_from_function
@@ -34,7 +34,7 @@ together_ai_tool_models = [
 ]
 
 
-def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
+def getJSONMode(llm_provider: str, model: str, stream: Optional[bool]) -> Mode:
     # LiteLLM transforms openai tools to anthropic / vertex hence no need for separate mode
     if llm_provider in [
         "openai",
@@ -55,6 +55,10 @@ def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
         llm_provider == "ollama" or llm_provider == "ollama_chat"
     ) and model in ollama_tool_models:
         return Mode.TOOLS
+    # Stream with json not supported
+    # https://inference-docs.cerebras.ai/openai#currently-unsupported-openai-features
+    elif llm_provider == "cerebras" and not stream:
+        return Mode.JSON_SCHEMA
     elif llm_provider == "ollama" or llm_provider == "ollama_chat":
         return Mode.JSON
     elif llm_provider == "anyscale" and model.replace("anyscale/", "") in [
@@ -67,6 +71,24 @@ def getJSONMode(llm_provider: Optional[str], model: str) -> Mode:
             f"{model} does not have support for any JSON mode. Defaulting to MD_JSON."
         )
         return Mode.MD_JSON
+
+
+def format_tool_call(message: BaseModel | dict) -> dict:
+    """
+    Format the tool call message to be sent to the LLM
+    """
+    if not isinstance(message, (BaseModel, dict)):
+        raise ValueError("Message should be a BaseModel or a dict.")
+
+    d = message.model_dump() if isinstance(message, BaseModel) else message
+    tool_calls = d.get("tool_calls")
+    role = d.get("role")
+    content = d.get("content")
+
+    if not tool_calls or not role:
+        raise ValueError("Message should have both 'tool_calls' and 'role' fields.")
+
+    return {"role": role, "tool_calls": tool_calls, "content": content}
 
 
 def process_json_response(
@@ -98,6 +120,43 @@ def process_json_response(
         else:
             # Let instructor handle the response
             return process_response(
+                response,
+                response_model=response_model,
+                stream=stream,
+                strict=strict,
+                mode=mode,
+            )  # type: ignore
+
+
+async def process_json_response_async(
+    response,
+    response_model: type[T_Model],
+    llm_provider: Optional[str],
+    stream: bool,
+    strict: Optional[bool] = None,
+    mode: Mode = Mode.FUNCTIONS,
+) -> T_Model:
+    """
+    Wrapper around instructor process_response to specially handle different response mode.
+    If ollama is used with JSON mode, we patch the name and parse it as if it is a function call.
+    """
+    if response_model is not None:
+        if mode in {Mode.JSON} and (
+            llm_provider == "ollama" or llm_provider == "ollama_chat"
+        ):
+            message = response.choices[0].message
+            tool_call = message.tool_calls[0]
+            tool_call.function.name = response_model.openai_schema["name"]  # type: ignore
+            return await process_response_async(
+                response,
+                response_model=response_model,
+                stream=stream,
+                strict=strict,
+                mode=Mode.TOOLS,
+            )  # type: ignore
+        else:
+            # Let instructor handle the response
+            return await process_response_async(
                 response,
                 response_model=response_model,
                 stream=stream,

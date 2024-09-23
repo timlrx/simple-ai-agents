@@ -134,3 +134,20 @@ async def test_stream_async():
     async for i in response:
         assert len(i["delta"]) > 0
         assert len(i["response"]) > 0
+
+
+def test_stream_model():
+    sess = ChatLLMSession()
+    response = sess.stream_model("Generate a user", response_model=UserDetail)
+    for obj in response:
+        assert "name" in obj.model_fields.keys()
+        assert "age" in obj.model_fields.keys()
+
+
+@pytest.mark.asyncio
+async def test_stream_model_async():
+    sess = ChatLLMSession()
+    response = sess.stream_model_async("Generate a user", response_model=UserDetail)
+    async for obj in response:
+        assert "name" in obj.model_fields.keys()
+        assert "age" in obj.model_fields.keys()

@@ -8,10 +8,15 @@ from simple_ai_agents.models import LLMOptions, Tool
 
 load_dotenv()
 
-openai: LLMOptions = {"model": "gpt-4o-mini", "temperature": 0.7}
-github: LLMOptions = {
-    "model": "github/gpt-4o-mini",
-}
+openai = LLMOptions(model="gpt-4o-mini", temperature=0.7)
+github = LLMOptions(model="github/gpt-4o-mini")
+groq = LLMOptions(model="groq/llama-3.1-70b-versatile", temperature=0.7)
+together = LLMOptions(
+    model="together_ai/meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", temperature=0.7
+)
+anthropic = LLMOptions(model="claude-3-5-sonnet-20240620")
+llama3 = LLMOptions(model="ollama/llama3.1", api_base="http://localhost:11434")
+cerebras = LLMOptions(model="cerebras/llama3.1-70b")
 
 
 def get_current_weather(location, unit="fahrenheit"):
@@ -65,6 +70,7 @@ def run():
     sess = ChatLLMSession()
     response = sess.gen(
         "What's the weather like in San Francisco",
+        system="Use the tools provided to answer the question",
         llm_options=github,
         tools=[
             # Tool(tool_model=weather_tool_schema, function=get_current_weather),

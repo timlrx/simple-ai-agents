@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from rich import print
 
 from simple_ai_agents.chat_agent import ChatAgent
 from simple_ai_agents.models import LLMOptions
@@ -8,16 +7,12 @@ from simple_ai_agents.models import LLMOptions
 load_dotenv()
 
 openai: LLMOptions = {"model": "gpt-4o-mini", "temperature": 0.7}
-anyscale: LLMOptions = {
-    "model": "anyscale/mistralai/Mistral-7B-Instruct-v0.1",
-    "temperature": 0.7,
-}
 together: LLMOptions = {
-    "model": "together_ai/togethercomputer/llama-2-70b",
+    "model": "together_ai/togethercomputer/Meta-Llama-3.1-70B-Instruct-Turbo",
     "temperature": 0.7,
 }
-mistral: LLMOptions = {
-    "model": "ollama/mistral",
+llama3: LLMOptions = {
+    "model": "ollama/llama3.1",
     "temperature": 0.7,
     "api_base": "http://localhost:11434",
 }
@@ -47,14 +42,11 @@ def gen_recipe(recipe_name: str):
     subsequent prompts as required.
     """
     chatbot = ChatAgent(
-        system="You are an Italian chef", llm_options=mistral, character="Chef"
+        system="You are an Italian chef", llm_options=openai, character="Chef"
     )
-    # openai and anyscale seems to do a good job over here,
-    # but local mistral fails to generate the correct schema
     recipe = chatbot.gen_model(
         f"Generate a {recipe_name} recipe", response_model=Recipe, llm_options=together
     )
-    print(recipe)
     chatbot(
         f"Provide some helpful tips to cook this dish:\n {recipe}",
         console_output=True,
@@ -63,5 +55,5 @@ def gen_recipe(recipe_name: str):
 
 
 if __name__ == "__main__":
-    pasta = gen_recipe("aglio olio")
     # Since pasta is a pydantic model, we can easily add it to a database or serve it as an API
+    pasta = gen_recipe("aglio olio")

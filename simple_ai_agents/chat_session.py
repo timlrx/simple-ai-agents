@@ -3,7 +3,7 @@ from json import JSONDecodeError
 from typing import Any, AsyncGenerator, Generator, Literal, Optional, TypeVar, Union
 
 import litellm
-from instructor import OpenAISchema
+from instructor import OpenAISchema, Partial
 from instructor.mode import Mode
 from instructor.process_response import handle_response_model
 from litellm import CustomStreamWrapper, acompletion, completion
@@ -13,9 +13,11 @@ from pydantic import BaseModel, ValidationError
 
 from simple_ai_agents.models import ChatMessage, ChatSession, LLMOptions, Tool
 from simple_ai_agents.utils import (
+    format_tool_call,
     format_tool_schema,
     getJSONMode,
     process_json_response,
+    process_json_response_async,
 )
 
 litellm.telemetry = False
@@ -28,7 +30,7 @@ T_Model = TypeVar("T_Model", bound=BaseModel)
 
 class ChatLLMSession(ChatSession):
     system: str = "You are a helpful assistant."
-    llm_options: Optional[LLMOptions] = {"model": "gpt-4o-mini"}
+    llm_options: Optional[LLMOptions] = LLMOptions(model="gpt-4o-mini")
 
     def prepare_request(
         self,
@@ -36,6 +38,7 @@ class ChatLLMSession(ChatSession):
         system: Optional[str] = None,
         response_model: Optional[type[BaseModel]] = None,
         llm_options: Optional[LLMOptions] = None,
+        stream: Optional[bool] = False,
     ) -> tuple[
         str,
         dict[str, Any],
@@ -97,7 +100,7 @@ class ChatLLMSession(ChatSession):
         kwargs = {k: v for k, v in litellm_options.items() if k != "model"}
 
         if response_model:
-            mode = getJSONMode(custom_llm_provider, model)
+            mode = getJSONMode(custom_llm_provider, model, stream)
             kwargs["messages"] = history  # handle_response_model will add messages
             response_model, fn_kwargs = handle_response_model(
                 response_model=response_model, mode=mode, **kwargs
@@ -167,6 +170,7 @@ class ChatLLMSession(ChatSession):
             response: ModelResponse = completion(
                 model=model,
                 messages=history,
+                tools=tool_schemas if llm_provider == "anthropic" else None,
             )  # type: ignore
         try:
             content, assistant_message = self._handle_message_response(response)
@@ -221,6 +225,7 @@ class ChatLLMSession(ChatSession):
             response: ModelResponse = await acompletion(
                 model=model,
                 messages=history,
+                tools=tool_schemas if llm_provider == "anthropic" else None,
             )  # type: ignore
         try:
             content, assistant_message = self._handle_message_response(response)
@@ -281,7 +286,7 @@ class ChatLLMSession(ChatSession):
                 response: ModelResponse = await acompletion(
                     model=model, messages=history, **kwargs  # type: ignore
                 )
-                model: T_Model = process_json_response(
+                model: T_Model = await process_json_response_async(
                     response,
                     response_model=response_model_processed,  # type: ignore
                     llm_provider=llm_provider,
@@ -474,7 +479,13 @@ class ChatLLMSession(ChatSession):
                 response_message, tool_calls, tools
             )
             history.extend(tool_history)
-            response = completion(model=model, messages=history, stream=True, **kwargs)
+            response = completion(
+                model=model,
+                messages=history,
+                stream=True,
+                tools=tool_schemas if llm_provider == "anthropic" else None,
+                **kwargs,
+            )
         for chunk in response:
             delta = chunk["choices"][0]["delta"]  # type: ignore
             if delta and delta.get("content"):
@@ -489,6 +500,144 @@ class ChatLLMSession(ChatSession):
             content=content,
         )
         self.add_messages([user_message, assistant_message], save_messages)
+
+    def stream_model(
+        self,
+        prompt: str,
+        response_model: type[T_Model | OpenAISchema | BaseModel],
+        system: Optional[str] = None,
+        llm_options: Optional[LLMOptions] = None,
+        validation_retries: int = 1,
+        strict: Optional[bool] = None,
+    ) -> Generator[T_Model, None, None]:
+        """
+        Generate a response from the AI and parse it into a response model.
+
+        Args:
+            prompt (str): User prompt
+            system (str, optional): System prompt. Defaults to None.
+            llm_options (LLMOptions, optional): LiteLLM options.
+                See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
+                Defaults to None.
+            validation_retries (int, optional):
+                Number of times to retry generating a valid response model.
+            response_model (BaseModel): The response model to use for parsing the response
+            strict (bool, optional): Whether to use strict json parsing. Defaults to None.
+
+        Returns:
+            Generator[T_Model, None, None]: A generator yielding instances of the response model.
+        """
+        if not response_model:
+            raise ValueError("No response model provided.")
+        (
+            model,
+            kwargs,
+            history,
+            user_message,
+            llm_provider,
+            response_model_processed,
+            response_mode,
+        ) = self.prepare_request(
+            prompt,
+            system=system,
+            response_model=response_model,
+            llm_options=llm_options,
+            stream=True,
+        )  # type: ignore
+        response_model_processed: T_Model = Partial[response_model_processed]  # type: ignore
+        response_mode: Mode
+        retries = 0
+        while retries <= validation_retries:
+            try:
+                response: ModelResponse = completion(
+                    model=model, messages=history, stream=True, **kwargs  # type: ignore
+                )
+                model_stream = process_json_response(
+                    response,
+                    response_model=response_model_processed,  # type: ignore
+                    llm_provider=llm_provider,
+                    stream=True,
+                    strict=strict,
+                    mode=response_mode,
+                )
+                for chunk in model_stream:
+                    yield chunk
+                return
+            except (ValidationError, JSONDecodeError) as e:
+                print(f"Error: {e}")
+                # Keep it simple for streaming retry - just retry the prompt
+                retries += 1
+                if retries > validation_retries:
+                    raise e
+
+    async def stream_model_async(
+        self,
+        prompt: str,
+        response_model: type[T_Model | OpenAISchema | BaseModel],
+        system: Optional[str] = None,
+        llm_options: Optional[LLMOptions] = None,
+        validation_retries: int = 1,
+        strict: Optional[bool] = None,
+    ) -> AsyncGenerator[T_Model, None]:
+        """
+        Generate a response from the AI and parse it into a response model.
+
+        Args:
+            prompt (str): User prompt
+            system (str, optional): System prompt. Defaults to None.
+            llm_options (LLMOptions, optional): LiteLLM options.
+                See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for details.
+                Defaults to None.
+            validation_retries (int, optional):
+                Number of times to retry generating a valid response model.
+            response_model (BaseModel): The response model to use for parsing the response
+            strict (bool, optional): Whether to use strict json parsing. Defaults to None.
+
+        Returns:
+            Generator[T_Model, None]: A async generator yielding instances of the response model.
+        """
+        if not response_model:
+            raise ValueError("No response model provided.")
+        (
+            model,
+            kwargs,
+            history,
+            user_message,
+            llm_provider,
+            response_model_processed,
+            response_mode,
+        ) = self.prepare_request(
+            prompt,
+            system=system,
+            response_model=response_model,
+            llm_options=llm_options,
+            stream=True,
+        )  # type: ignore
+        response_model_processed: T_Model = Partial[response_model_processed]  # type: ignore
+        response_mode: Mode
+        retries = 0
+        while retries <= validation_retries:
+            try:
+                response: CustomStreamWrapper = await acompletion(
+                    model=model, messages=history, stream=True, **kwargs
+                )  # type: ignore
+                model = await process_json_response_async(
+                    response,
+                    response_model=response_model_processed,  # type: ignore
+                    llm_provider=llm_provider,
+                    stream=True,
+                    strict=strict,
+                    mode=response_mode,
+                )
+                async for chunk in model:
+                    yield chunk
+                return
+            except (ValidationError, JSONDecodeError) as e:
+                print(f"Error: {e}")
+                # Keep it simple for streaming retry - just retry the prompt
+                retries += 1
+                if retries > validation_retries:
+                    raise e
 
     async def stream_async(
         self,
@@ -522,7 +671,7 @@ class ChatLLMSession(ChatSession):
             AsyncGenerator[dict[str, str], None]
         """
         model, kwargs, history, user_message, llm_provider, _, _ = self.prepare_request(
-            prompt, system=system, llm_options=llm_options
+            prompt, system=system, llm_options=llm_options, stream=True
         )
         tools, tool_schemas = format_tool_schema(tools) if tools else (None, None)
         response: CustomStreamWrapper = await acompletion(
@@ -569,7 +718,11 @@ class ChatLLMSession(ChatSession):
             )
             history.extend(tool_history)
             response = await acompletion(
-                model=model, messages=history, stream=True, **kwargs
+                model=model,
+                messages=history,
+                stream=True,
+                tools=tool_schemas if llm_provider == "anthropic" else None,
+                **kwargs,
             )  # type: ignore
         async for chunk in response:
             delta = chunk["choices"][0]["delta"]
@@ -613,7 +766,7 @@ class ChatLLMSession(ChatSession):
         available_functions = {
             tool.tool_model["function"]["name"]: tool.function for tool in tools  # type: ignore
         }
-        tool_history = [response_message]
+        tool_history = [format_tool_call(response_message)]
         for tool_call in tool_calls:
             function_name = tool_call["function"]["name"]
             function_args = json.loads(tool_call["function"]["arguments"])
