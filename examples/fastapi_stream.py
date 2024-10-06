@@ -3,7 +3,7 @@ from typing import AsyncGenerator
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
-from litellm import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from simple_ai_agents.chat_session import ChatLLMSession
 from simple_ai_agents.models import LLMOptions
