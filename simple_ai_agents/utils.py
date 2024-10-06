@@ -1,5 +1,6 @@
+import json
 import logging
-from typing import Optional, TypeVar
+from typing import AsyncIterator, Iterator, Literal, Optional, TypeVar
 
 from instructor import handle_response_model
 from instructor.mode import Mode
@@ -182,3 +183,118 @@ def format_tool_schema(tools: list[Tool]):
 
     tool_schemas = [tool.tool_model for tool in tools]
     return tools, tool_schemas
+
+
+async def async_pydantic_to_text_stream(
+    stream: AsyncIterator[BaseModel], mode: Literal["full", "delta"] = "full"
+) -> AsyncIterator[str]:
+    """
+    Asynchronously converts a stream of Pydantic models to a stream of JSON strings,
+    outputting either the full matching prefix or only the incremental difference
+    between consecutive streams with changes.
+
+    Args:
+        stream (AsyncIterator[BaseModel]): An async iterator yielding Pydantic model instances.
+        mode (Literal['full', 'delta']): The output mode. 'full' returns the full matching prefix
+            (default). 'delta' returns only the incremental difference.
+
+    Yields:
+        AsyncIterator[str]: JSON string representation of the diff between consecutive Pydantic
+        models.
+    """
+    json_history = []
+    last_output = ""
+
+    def get_matching_prefix(s1: str, s2: str) -> str:
+        """Return the matching prefix of two strings."""
+        for i, (c1, c2) in enumerate(zip(s1, s2)):
+            if c1 != c2:
+                return s1[:i]
+        return s1  # If one string is a prefix of the other, return the shorter one
+
+    async for model in stream:
+        # Convert the Pydantic model to a JSON string
+        new_json = json.dumps(model.model_dump(exclude_unset=True))
+
+        # If this is not the first item and the new JSON is not in the history
+        if json_history and new_json not in json_history:
+            # Get the matching prefix with the last JSON in history
+            diff = get_matching_prefix(json_history[-1], new_json)
+
+            # Determine the output based on the mode
+            if mode == "full":
+                output = diff
+            else:  # mode == 'delta'
+                output = diff[len(last_output) :]
+
+            # Yield the output if it's not empty
+            if output:
+                yield output
+                last_output = diff
+
+        # Update the JSON history
+        json_history.append(new_json)
+
+    # Ensure we output the last stream if it's different from the last output
+    if json_history and json_history[-1] != last_output:
+        if mode == "full":
+            yield json_history[-1]
+        else:  # mode == 'delta'
+            yield json_history[-1][len(last_output) :]
+
+
+def pydantic_to_text_stream(
+    stream: Iterator[BaseModel], mode: Literal["full", "delta"] = "delta"
+) -> Iterator[str]:
+    """
+    Converts a stream of Pydantic models to a stream of JSON strings,
+    outputting either the full matching prefix or only the incremental difference
+    between consecutive streams with changes.
+
+    Args:
+        stream (Iterator[BaseModel]): An iterator yielding Pydantic model instances.
+        mode (Literal['full', 'delta']): The output mode.
+            'full' returns the full matching prefix (default).
+            'delta' returns only the incremental difference.
+
+    Yields:
+        str: JSON string representation of the diff between consecutive Pydantic models.
+    """
+    json_history = []
+    last_output = ""
+
+    def get_matching_prefix(s1: str, s2: str) -> str:
+        """Return the matching prefix of two strings."""
+        for i, (c1, c2) in enumerate(zip(s1, s2)):
+            if c1 != c2:
+                return s1[:i]
+        return s1  # If one string is a prefix of the other, return the shorter one
+
+    for model in stream:
+        # Convert the Pydantic model to a JSON string
+        new_json = json.dumps(model.model_dump(exclude_unset=True))
+
+        # If this is not the first item and the new JSON is not in the history
+        if json_history and new_json not in json_history:
+            # Get the matching prefix with the last JSON in history
+            diff = get_matching_prefix(json_history[-1], new_json)
+
+            # Determine the output based on the mode
+            if mode == "full":
+                output = diff
+            else:
+                output = diff[len(last_output) :]
+
+            if output:
+                yield output
+                last_output = diff
+
+        # Update the JSON history
+        json_history.append(new_json)
+
+    # Ensure we output the last stream if it's different from the last output
+    if json_history and json_history[-1] != last_output:
+        if mode == "full":
+            yield json_history[-1]
+        else:
+            yield json_history[-1][len(last_output) :]
