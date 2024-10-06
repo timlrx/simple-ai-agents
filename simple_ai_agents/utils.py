@@ -186,7 +186,7 @@ def format_tool_schema(tools: list[Tool]):
 
 
 async def async_pydantic_to_text_stream(
-    stream: AsyncIterator[BaseModel], mode: Literal["full", "delta"] = "full"
+    stream: AsyncIterator[BaseModel], mode: Literal["full", "delta"] = "delta"
 ) -> AsyncIterator[str]:
     """
     Asynchronously converts a stream of Pydantic models to a stream of JSON strings,
@@ -224,7 +224,7 @@ async def async_pydantic_to_text_stream(
             # Determine the output based on the mode
             if mode == "full":
                 output = diff
-            else:  # mode == 'delta'
+            else:
                 output = diff[len(last_output) :]
 
             # Yield the output if it's not empty
@@ -239,7 +239,7 @@ async def async_pydantic_to_text_stream(
     if json_history and json_history[-1] != last_output:
         if mode == "full":
             yield json_history[-1]
-        else:  # mode == 'delta'
+        else:
             yield json_history[-1][len(last_output) :]
 
 
